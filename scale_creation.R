@@ -11,16 +11,16 @@ rawdata <- read.csv('data/fulldataset.csv')
 ## Willingness
 
 wilac <- ' willingness  =~ wilac1 + wilac2 + wilac3 +
-                           wilac4 + wilac5 + wilac6 '
-fit <- cfa(wilac, data=rawdata, estimator="MLR",  missing="ML")
-summary(fit, fit.measures=TRUE, modindices=TRUE)
+                           wilac4 +  wilac6 '
+fitw <- cfa(wilac, data=rawdata, estimator="MLR",  missing="ML")
+summary(fitw, fit.measures=TRUE, modindices=TRUE)
 
 ## Participation
 
-colac <- ' participation  =~ colac1 + colac2 + colac3 +
-                             colac4 + colac5 + colac6 '
-fit <- cfa(colac, data=rawdata, estimator="MLR",  missing="ML")
-summary(fit, fit.measures=TRUE, modindices=TRUE)
+colac <- ' participation  =~ colac2 + colac3 +
+                             colac4 + colac6 '
+fitc <- cfa(colac, data=rawdata, estimator="MLR",  missing="ML")
+summary(fitc, fit.measures=TRUE, modindices=TRUE)
 
 ## Cronbach Alpha
 
