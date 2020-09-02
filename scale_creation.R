@@ -29,3 +29,21 @@ alpha(rawdata[14:19])
 
 ## colac
 alpha(rawdata[20:25])
+
+
+## calculating composite variables only with complete cases
+
+rawdata$wilac <- rowMeans(rawdata[c('wilac1',
+                                    'wilac2',
+                                    'wilac3',
+                                    'wilac4',
+                                    'wilac6')], na.rm = FALSE)
+
+rawdata$colac <- rowMeans(rawdata[c('colac2',
+                                    'colac3',
+                                    'colac4',
+                                    'colac6')], na.rm = FALSE)
+
+## overwirtting old data file
+
+write.csv(rawdata, 'data/fulldataset.csv')
