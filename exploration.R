@@ -1,27 +1,29 @@
 
 library(psych)
+library(ggplot2)
 
-rawdata <- read.csv('data/fulldataset.csv')
-
-rawdata$X <- NULL
-rawdata$X.1 <- NULL
-rawdata$X.2 <- NULL
+rawdata <- read.csv('data/fulldataset.csv', row.names = 1)
 
 names(rawdata)
 
-table(rawdata$additional_data)
+## auxiliary dataframes fro plotting
 
 wilac <- aggregate(wilac ~ Sample, data = rawdata, mean)
-
-wilac <- merge(wilac, unique(rawdata[c('Sample', 'gai')]), by='Sample')
-
-plot(wilac$gai, wilac$wilac)
-
-
-
+wilac <- merge(wilac, unique(rawdata[c('Sample', 'ins_stigma')]), by='Sample')
 
 colac <- aggregate(colac ~ Sample, data = rawdata, mean)
+colac <- merge(colac, unique(rawdata[c('Sample', 'ins_stigma')]), by='Sample')
 
-colac <- merge(colac, unique(rawdata[c('Sample', 'gai')]), by='Sample')
+## ploting
 
-plot(colac$gai, colac$colac)
+ggplot(rawdata, aes(perc_stigma, colac)) +
+    geom_count(col="tomato3", show.legend=F) +
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) 
+
+ggplot(colac, aes(ins_stigma, colac)) +
+    geom_count(col="tomato3", show.legend=F) +
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) 
+
+ggplot(wilac, aes(ins_stigma, wilac)) +
+    geom_count(col="tomato3", show.legend=F) +
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1)

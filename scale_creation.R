@@ -26,10 +26,14 @@ summary(fitc, fit.measures=TRUE, modindices=TRUE)
 
 ## wilac
 alpha(rawdata[14:19])
-
 ## colac
 alpha(rawdata[20:25])
 
+
+## Pecieve institutional stigma
+
+corr.test(rawdata$accep, rawdata$disclo)
+rawdata$perc_stigma <- rowMeans(rawdata[c('accep', 'disclo')], na.rm = FALSE)
 
 ## calculating composite variables only with complete cases
 
@@ -43,6 +47,30 @@ rawdata$colac <- rowMeans(rawdata[c('colac2',
                                     'colac3',
                                     'colac4',
                                     'colac6')], na.rm = FALSE)
+
+## correlation beetwen measures of intitutional stigma
+
+corr.test(rawdata$gai, rawdata$gbgr)
+
+## based on our pre-resgistration, the correlation is high enough to conbine the 2 indices
+
+gai_s <- scale(rawdata$gai)
+gai_s
+gbgr_s <- scale(rawdata$gbgr)
+gbgr_s
+
+rawdata$ins_stigma <- rowMeans(data.frame(gai_s, gbgr_s),
+                               na.rm = FALSE)
+
+## deleting useles index variables
+
+rawdata$X <- NULL
+rawdata$X.1 <- NULL
+rawdata$X.2 <- NULL
+
+dim(rawdata)
+head(rawdata)
+str(rawdata)
 
 ## overwirtting old data file
 
