@@ -33,20 +33,20 @@ alpha(rawdata[20:25])
 ## Pecieve institutional stigma
 
 corr.test(rawdata$accep, rawdata$disclo)
-rawdata$perc_stigma <- rowMeans(rawdata[c('accep', 'disclo')], na.rm = FALSE)
+rawdata$perc_stigma <- rowMeans(rawdata[c('accep', 'disclo')], na.rm = TRUE)
 
-## calculating composite variables only with complete cases
+## calculating composite variables
 
 rawdata$wilac <- rowMeans(rawdata[c('wilac1',
                                     'wilac2',
                                     'wilac3',
                                     'wilac4',
-                                    'wilac6')], na.rm = FALSE)
+                                    'wilac6')], na.rm = TRUE)
 
 rawdata$colac <- rowMeans(rawdata[c('colac2',
                                     'colac3',
                                     'colac4',
-                                    'colac6')], na.rm = FALSE)
+                                    'colac6')], na.rm = TRUE)
 
 ## correlation beetwen measures of intitutional stigma
 
