@@ -30,4 +30,33 @@ individualdf <- read.csv('data/cleanzip.csv')
 
 finaldf <- merge(individualdf, countryleveldf, by = 'Sample')
 
+
+## adding gini and gdp in missing cases for 2016
+## with closest year or other sources
+
+unique(finaldf$Sample)
+
+ginitable <- aggregate(gini2016 ~ Sample, unique, data = finaldf)
+ginitable <- rbind(ginitable, list("Australia", 34.4))
+ginitable <- rbind(ginitable, list("Canada", 33.8))
+ginitable <- rbind(ginitable, list("Chile", 44.4))
+ginitable <- rbind(ginitable, list("Czech", 25.4))
+ginitable <- rbind(ginitable, list("Russia", 36.8))
+str(ginitable)
+
+
+gdptable <- aggregate(gdp2016 ~ Sample, mean, data = finaldf)
+gdptable <- rbind(gdptable, list("Czech", 18463.3866))
+gdptable <- rbind(gdptable, list("Russia", 8704.8984))
+str(gdptable)
+
+
+finaldf$gini2016 <- NULL
+finaldf$gdp2016 <- NULL
+
+finaldf <- merge(finaldf, ginitable, by = 'Sample')
+finaldf <- merge(finaldf, gdptable, by = 'Sample')
+summary(finaldf)
+
+
 write.csv(finaldf, 'data/fulldataset.csv')
