@@ -3,14 +3,19 @@ install.packages('merTools')
 install.packages('Amelia')
 install.packages('lmerTest')
 install.packages('mclust')
+install.packages('sjPlot')
+install.packages('mediation')
 
 library(lme4)
 library(ggplot2)
 library(Amelia)
 library(merTools)
-library(lmerTest)
+#library(lmerTest) # note: this packages interfere with mediation
 library(mice)
 library(mclust)
+library(mediation)
+library(sjPlot)
+library(psych)
 
 dat <- read.csv('data/fulldataset.csv', row.names = 1)
 names(dat)
@@ -57,6 +62,19 @@ get_mean_centered <- function(y, x, data){
     return(tempdata)
 }
 
+
+## descriptives
+options(browser="/usr/bin/firefox")
+
+tab_df(aggregate(ID ~ Sample, data = dat, FUN = length))
+prop.table(table(dat$gen))*100
+
+frqdat <- dat
+frqdat$gen  <- as.factor(frqdat$gen)
+tab_df(describe(frqdat[-c(1,2)]))
+tab_corr(frqdat[-c(1,2)])
+
+
 ## creating centered variables
 dat <- get_mean_centered('perc_stigma', 'Sample', dat)
 dat <- get_mean_centered('age', 'Sample', dat)
@@ -83,7 +101,7 @@ dat$grpid_gm <- NULL
 
 ## multiple imputation step
 
-impute.out <- amelia(dat, noms = c('gen'), idvars = c('Sample'), m = 5)
+impute.out <- amelia(dat, noms = c('gen'), idvars = c('Sample'), m = 20)
 summary(impute.out)
 
 
@@ -142,6 +160,34 @@ colac_ins <- lmerModList(colac ~ poly(ins_stigma, 2, raw=FALSE) +
                              (1 | Sample),
                          data = impute.out$imputations)
 summary(colac_ins)
+
+## Mediation analysis
+
+mxmodel <- lmer(perc_stigma_mc ~ ins_stigma +
+                    as.factor(gen) +
+                    age_gmc +
+                    grpid_gmc +
+                    scale(gini2016) +
+                    scale(gdp2016) +
+                    (1 | Sample),
+                data = impute.out$imputations$imp1)
+
+summary(mxmodel)
+
+ymxmodel <- lmer(wilac ~ perc_stigma_mc +
+                     ins_stigma  +
+                     as.factor(gen) +
+                     age_gmc +
+                     grpid_gmc +
+                     scale(gini2016) +
+                     scale(gdp2016) +
+                     (1 | Sample),
+                 data = impute.out$imputations$imp1)
+summary(ymxmodel)
+
+results <- mediate(mxmodel, ymxmodel, treat='ins_stigma', mediator='perc_stigma_mc',
+                   boot=FALSE, sims = 100)
+summary(results)
 
 ## graphical explorations
 
@@ -206,92 +252,125 @@ ggsave("plots/colac_ins.png", width = 20, height = 18,
 
 ## aggregated country level plots and analysis
 
-dat_imp <- impute.out$imputations$imp1
-dat_imp$ins_stigma <- as.numeric(dat_imp$ins_stigma)
-str(dat_imp)
+dat_imp <- impute.out$imputations$imp10
 
-
-perc_stigma <- aggregate(perc_stigma_mc ~ Sample, data = dat_imp, mean)
-ins_stigma <- aggregate(ins_stigma ~ Sample, data = dat_imp, mean)
-age <- aggregate(age_mc ~ Sample, data = dat_imp, mean)
-grpid <- aggregate(grpid_mc ~ Sample, data = dat_imp, mean)
-gini2016 <- aggregate(gini2016 ~ Sample, data = dat_imp, mean)
-gdp2016 <- aggregate(gdp2016 ~ Sample, data = dat_imp, mean)
 wilac <- aggregate(wilac ~ Sample, data = dat_imp, mean)
+colnames(wilac) <- c('Sample', 'MWilac')
 colac <- aggregate(colac ~ Sample, data = dat_imp, mean)
+colnames(colac) <- c('Sample', 'MColac')
+age <- aggregate(age_mc ~ Sample, data = dat_imp, mean)
+colnames(age) <- c('Sample', 'MAge')
+grpid <- aggregate(grpid_mc ~ Sample, data = dat_imp, mean)
+colnames(grpid) <- c('Sample', 'MGrpid')
+perc_stigma <- aggregate(perc_stigma_mc ~ Sample, data = dat_imp, mean)
+colnames(perc_stigma) <- c('Sample', 'MPercAccept')
+ins_stigma <- aggregate(ins_stigma ~ Sample, data = dat_imp, mean)
+colnames(ins_stigma) <- c('Sample', 'MInsAccept')
+gini <- aggregate(gini2016 ~ Sample, data = dat_imp, mean)
+colnames(gini) <- c('Sample', 'Gini2016')
+gdp <- aggregate(gdp2016 ~ Sample, data = dat_imp, mean)
+colnames(gdp) <- c('Sample', 'GDPpc2016')
 
-countrydata <- merge(wilac, perc_stigma, by='Sample')
-countrydata <- merge(ins_stigma, countrydata, by='Sample')
-countrydata <- merge(colac, countrydata, by='Sample')
-countrydata <- merge(age, countrydata, by='Sample')
-countrydata <- merge(grpid, countrydata, by='Sample')
-countrydata <- merge(gini2016, countrydata, by='Sample')
-countrydata <- merge(gdp2016, countrydata, by='Sample')
-countrydata$reswilac <- resid(lm(wilac ~  +
-                                     age_mc +
-                                     grpid_mc +
-                                     scale(gdp2016) +
-                                     scale(gini2016),
-                                 data = countrydata))
-countrydata$rescolac <- resid(lm(colac ~  +
-                                     age_mc +
-                                     grpid_mc +
-                                     scale(gdp2016) +
-                                     scale(gini2016),
-                                 data = countrydata))
+GenProp <- prop.table(table(dat_imp$Sample, dat_imp$gen), 1)
+GenProp <- as.data.frame.matrix(GenProp)
+colnames(GenProp) <- c('male', 'female', 'inter', 'trans', 'other')
+GenProp$Sample <- row.names(GenProp)
+GenProp
 
+cntrylvl_dat <- merge(wilac, colac, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, age, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, grpid, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, GenProp, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, perc_stigma, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, ins_stigma, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, gini, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, gdp, by='Sample')
 
+str(cntrylvl_dat)
 
 ## country level regression
 
-cntrywilac <- lm(wilac ~ poly(perc_stigma_mc, 2, raw=FALSE) +
-                     age_mc +
-                     grpid_mc +
-                     scale(gdp2016) +
-                     scale(gini2016),
-                 data = countrydata)
-summary(cntrywilac)
+options(browser="/usr/bin/firefox")
 
-cntrycolac <- lm(colac ~ poly(perc_stigma_mc, 2, raw=FALSE) +
-                     age_mc +
-                     grpid_mc +
-                     scale(gdp2016) +
-                     scale(gini2016),
-                 data = countrydata)
-summary(cntrycolac)
-
-cntrywilac <- lm(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
-                     age_mc +
-                     grpid_mc +
-                     scale(gdp2016) +
-                     scale(gini2016),
-                 data = countrydata)
-summary(cntrywilac)
-
-cntrycolac <- lm(colac ~ poly(ins_stigma, 2, raw=FALSE) +
-                     age_mc +
-                     grpid_mc +
-                     scale(gdp2016) +
-                     scale(gini2016),
-                 data = countrydata)
-summary(cntrycolac)
+wilac_ins_country <- lm(MWilac ~ poly(MInsAccept, 2, raw=FALSE) +
+                            ## control variables
+                            male +
+                            female+
+                            inter+
+                            trans+
+                            other+
+                            MAge +
+                            MGrpid +
+                            scale(Gini2016) +
+                            scale(GDPpc2016),
+                        data = cntrylvl_dat)
+tab_model(wilac_ins_country, use.viewer=FALSE)
 
 
-ggplot(countrydata, aes(perc_stigma_mc, reswilac)) +
+colac_ins_country <- lm(MColac ~ poly(MInsAccept, 2, raw=FALSE) +
+                            ## control variables
+                            male +
+                            female+
+                            inter+
+                            trans+
+                            other+
+                            MAge +
+                            MGrpid +
+                            scale(Gini2016) +
+                            scale(GDPpc2016),
+                        data = cntrylvl_dat)
+tab_model(colac_ins_country, use.viewer=FALSE)
+
+
+
+wilac_perc_country <- lm(MWilac ~ poly(MPercAccept, 2, raw=FALSE) +
+                            ## control variables
+                            male +
+                            female+
+                            inter+
+                            trans+
+                            other+
+                            MAge +
+                            MGrpid +
+                            scale(Gini2016) +
+                            scale(GDPpc2016),
+                        data = cntrylvl_dat)
+tab_model(wilac_perc_country, use.viewer=FALSE)
+
+
+colac_perc_country <- lm(MColac ~ poly(MPercAccept, 2, raw=FALSE) +
+                            ## control variables
+                            male +
+                            female+
+                            inter+
+                            trans+
+                            other+
+                            MAge +
+                            MGrpid +
+                            scale(Gini2016) +
+                            scale(GDPpc2016),
+                        data = cntrylvl_dat)
+tab_model(colac_perc_country, use.viewer=FALSE)
+
+
+ggplot(cntrylvl_dat, aes(MPercStigma, MWilac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1)
 
-ggplot(countrydata, aes(perc_stigma_mc, rescolac)) +
+ggplot(cntrylvl_dat, aes(perc_stigma_mc, rescolac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1)
 
-ggplot(countrydata, aes(ins_stigma, reswilac)) +
+ggplot(cntrylvl_dat, aes(ins_stigma, reswilac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1)
 
-ggplot(countrydata, aes(ins_stigma, rescolac)) +
+ggplot(cntrylvl_dat, aes(ins_stigma, rescolac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) 
+
+
+
 
 
 ## models for clustering based on estimates of HLM

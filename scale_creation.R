@@ -25,9 +25,9 @@ summary(fitc, fit.measures=TRUE, modindices=TRUE)
 ## Cronbach Alpha
 
 ## wilac
-alpha(rawdata[14:19])
+alpha(rawdata[c('wilac1', 'wilac2', 'wilac3', 'wilac4', 'wilac6')])
 ## colac
-alpha(rawdata[20:25])
+alpha(rawdata[c('colac2', 'colac3', 'colac4', 'colac6')])
 
 
 ## Pecieve institutional stigma
