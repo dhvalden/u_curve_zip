@@ -11,11 +11,11 @@ library(ggplot2)
 library(Amelia)
 library(merTools)
 #library(lmerTest) # note: this packages interfere with mediation
-library(mice)
 library(mclust)
 library(mediation)
 library(sjPlot)
 library(psych)
+library(gridExtra)
 
 dat <- read.csv('data/fulldataset.csv', row.names = 1)
 names(dat)
@@ -64,7 +64,7 @@ get_mean_centered <- function(y, x, data){
 
 
 ## descriptives
-options(browser="/usr/bin/firefox")
+ options(browser="/usr/bin/firefox")
 
 tab_df(aggregate(ID ~ Sample, data = dat, FUN = length))
 prop.table(table(dat$gen))*100
@@ -125,6 +125,18 @@ wilac_perc <- lmerModList(wilac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                           data = impute.out$imputations)
 summary(wilac_perc)
 
+##Willingness by institutional stigma model
+wilac_ins <- lmerModList(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
+                             ## control variables
+                             as.factor(gen) +
+                             age_gmc +
+                             grpid_gmc +
+                             scale(gini2016) +
+                             scale(gdp2016) +
+                             (1 | Sample),
+                         data = impute.out$imputations)
+summary(wilac_ins)
+
 ##Participation by perceive stigma model
 colac_perc <- lmerModList(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                               ## control variables
@@ -137,17 +149,6 @@ colac_perc <- lmerModList(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                           data = impute.out$imputations)
 summary(colac_perc)
 
-##Willingness by institutional stigma model
-wilac_ins <- lmerModList(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
-                             ## control variables
-                             as.factor(gen) +
-                             age_gmc +
-                             grpid_gmc +
-                             scale(gini2016) +
-                             scale(gdp2016) +
-                             (1 | Sample),
-                         data = impute.out$imputations)
-summary(wilac_ins)
 
 ##Participation by institutional stigma model
 colac_ins <- lmerModList(colac ~ poly(ins_stigma, 2, raw=FALSE) +
@@ -174,7 +175,7 @@ mxmodel <- lmer(perc_stigma_mc ~ ins_stigma +
 
 summary(mxmodel)
 
-ymxmodel <- lmer(wilac ~ perc_stigma_mc +
+ymxmodel <- lmer(colac ~ perc_stigma_mc +
                      ins_stigma  +
                      as.factor(gen) +
                      age_gmc +
@@ -185,7 +186,7 @@ ymxmodel <- lmer(wilac ~ perc_stigma_mc +
                  data = impute.out$imputations$imp1)
 summary(ymxmodel)
 
-results <- mediate(mxmodel, ymxmodel, treat='ins_stigma', mediator='perc_stigma_mc',
+results <- mediation::mediate(mxmodel, ymxmodel, treat='ins_stigma', mediator='perc_stigma_mc',
                    boot=FALSE, sims = 100)
 summary(results)
 
@@ -213,51 +214,43 @@ fit_explo_colac <- lm(colac ~ +
 dat_imp$res_wilac <- resid(fit_explo_wilac)
 dat_imp$res_colac <- resid(fit_explo_colac)
 
-ggplot(dat_imp, aes(perc_stigma_gmc, res_wilac)) +
+g1 <- ggplot(dat_imp, aes(perc_stigma_gmc, res_wilac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
-    xlab("Perceive Institutional Stigma") +
-    ylab("Willingness to participate in activism") +
-    ggtitle("Residualized polynomial regression plot")
-ggsave("plots/wilac_perc.png", width = 20, height = 18,
+    xlab("Perceive Institutional Acceptance") +
+    ylab("Collective Action Intentions")
+g2 <- ggplot(dat_imp, aes(ins_stigma, res_wilac)) +
+    geom_count(col="tomato3", show.legend=F) +
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
+    xlab("Institutional Acceptance") +
+    theme(axis.title.y = element_blank())
+ggsave("plots/wilac_individual.png", arrangeGrob(g1, g2, nrow=1),width = 30, height = 12,
        units = "cm", limitsize = FALSE)
 
-ggplot(dat_imp, aes(perc_stigma_gmc, res_colac)) +
+g3 <- ggplot(dat_imp, aes(perc_stigma_gmc, res_colac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
-    xlab("Perceive Institutional Stigma") +
-    ylab("Participation in activism") +
-    ggtitle("Residualized polynomial regression plot")
-ggsave("plots/colac_perc.png", width = 20, height = 18,
-       units = "cm", limitsize = FALSE)
-
-ggplot(dat_imp, aes(ins_stigma, res_wilac)) +
+    xlab("Perceive Institutional Acceptance") +
+    ylab("Participation in Collective Actions")
+g4 <- ggplot(dat_imp, aes(ins_stigma, res_colac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
-    xlab("Institutional Stigma") +
-    ylab("Willingness to participate in activism") +
-    ggtitle("Residualized polynomial regression plot")
-ggsave("plots/wilac_ins.png", width = 20, height = 18,
-       units = "cm", limitsize = FALSE)
-
-ggplot(dat_imp, aes(ins_stigma, res_colac)) +
-    geom_count(col="tomato3", show.legend=F) +
-    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
-    xlab("Institutional Stigma") +
-    ylab("Participation in activism") +
-    ggtitle("Residualized polynomial regression plot")
-ggsave("plots/colac_ins.png", width = 20, height = 18,
+    xlab("Institutional Acceptance") +
+    theme(axis.title.y = element_blank())
+ggsave("plots/colac_individual.png", arrangeGrob(g3, g4, nrow=1),width = 30, height = 12,
        units = "cm", limitsize = FALSE)
 
 
 ## aggregated country level plots and analysis
 
-dat_imp <- impute.out$imputations$imp10
-
 wilac <- aggregate(wilac ~ Sample, data = dat_imp, mean)
 colnames(wilac) <- c('Sample', 'MWilac')
 colac <- aggregate(colac ~ Sample, data = dat_imp, mean)
 colnames(colac) <- c('Sample', 'MColac')
+reswilac <- aggregate(res_wilac ~ Sample, data = dat_imp, mean)
+colnames(reswilac) <- c('Sample', 'reswilac')
+rescolac <- aggregate(res_colac ~ Sample, data = dat_imp, mean)
+colnames(rescolac) <- c('Sample', 'rescolac')
 age <- aggregate(age_mc ~ Sample, data = dat_imp, mean)
 colnames(age) <- c('Sample', 'MAge')
 grpid <- aggregate(grpid_mc ~ Sample, data = dat_imp, mean)
@@ -278,6 +271,8 @@ GenProp$Sample <- row.names(GenProp)
 GenProp
 
 cntrylvl_dat <- merge(wilac, colac, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, reswilac, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, rescolac, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, age, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, grpid, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, GenProp, by='Sample')
@@ -322,7 +317,6 @@ colac_ins_country <- lm(MColac ~ poly(MInsAccept, 2, raw=FALSE) +
 tab_model(colac_ins_country, use.viewer=FALSE)
 
 
-
 wilac_perc_country <- lm(MWilac ~ poly(MPercAccept, 2, raw=FALSE) +
                             ## control variables
                             male +
@@ -352,25 +346,41 @@ colac_perc_country <- lm(MColac ~ poly(MPercAccept, 2, raw=FALSE) +
                         data = cntrylvl_dat)
 tab_model(colac_perc_country, use.viewer=FALSE)
 
+tab_model(wilac_perc_country, colac_perc_country)
+tab_model(wilac_ins_country, colac_ins_country)
 
-ggplot(cntrylvl_dat, aes(MPercStigma, MWilac)) +
+g5 <- ggplot(cntrylvl_dat, aes(MPercAccept, reswilac)) +
     geom_count(col="tomato3", show.legend=F) +
-    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1)
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
+    xlab('Perceive Institutional Acceptance') +
+    ylab('Res. Collective Action Intentions') +
+    ylim(-1.5, 1.5)
 
-ggplot(cntrylvl_dat, aes(perc_stigma_mc, rescolac)) +
+g6 <- ggplot(cntrylvl_dat, aes(MPercAccept, rescolac)) +
     geom_count(col="tomato3", show.legend=F) +
-    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1)
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
+    xlab('Perceive Institutional Acceptance') +
+    ylab('Res. Participation in Collective Action') +
+    ylim(-1.5, 1.5)
 
-ggplot(cntrylvl_dat, aes(ins_stigma, reswilac)) +
+g7 <- ggplot(cntrylvl_dat, aes(MInsAccept, reswilac)) +
     geom_count(col="tomato3", show.legend=F) +
-    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1)
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
+    xlab('Institutional Acceptance') +
+    ylab('Res. Collective Action Intentions') +
+    ylim(-1.5, 1.5)
 
-ggplot(cntrylvl_dat, aes(ins_stigma, rescolac)) +
+g8 <- ggplot(cntrylvl_dat, aes(MInsAccept, rescolac)) +
     geom_count(col="tomato3", show.legend=F) +
-    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) 
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
+    xlab('Institutional Acceptance') +
+    ylab('Res. Participation in Collective Action') +
+    ylim(-1.5, 1.5)
 
-
-
+ggsave("plots/perc_cntry.png", arrangeGrob(g5, g6, nrow=1), width = 30, height = 12,
+       units = "cm", limitsize = FALSE)
+ggsave("plots/ins_cntry.png", arrangeGrob(g7, g8, nrow=1), width = 30, height = 12,
+       units = "cm", limitsize = FALSE)
 
 
 ## models for clustering based on estimates of HLM
