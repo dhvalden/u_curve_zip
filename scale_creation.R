@@ -53,6 +53,7 @@ rawdata$colac <- rowMeans(rawdata[c('colac2',
 corr.test(rawdata$gai, rawdata$gbgr)
 
 ## based on our pre-resgistration, the correlation is high enough to conbine the 2 indices
+## Also reversing and scaling
 
 gai_s <- scale(rawdata$gai)
 gai_s

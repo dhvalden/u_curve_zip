@@ -10,7 +10,7 @@ library(lme4)
 library(ggplot2)
 library(Amelia)
 library(merTools)
-#library(lmerTest) # note: this packages interfere with mediation
+library(lmerTest) # note: this packages interfere with mediation
 library(mclust)
 library(mediation)
 library(sjPlot)
@@ -24,12 +24,14 @@ str(dat)
 dat$polori[dat$polori == 77] <- NA
 dat$polori[dat$polori == 66] <- NA
 
+table(dat$polori)
+
 ## trimming down the dataset
 
 dat <- dat[c('Sample',
              'gen',
              'age',
-##             'polori',
+             'polori',
              'grpid',
              'gai',
              'gbgr',
@@ -39,8 +41,6 @@ dat <- dat[c('Sample',
              'perc_stigma',
              'gini2016',
              'gdp2016')]
-
-str(dat)
 
 ## auxiliary function
 
@@ -64,7 +64,7 @@ get_mean_centered <- function(y, x, data){
 
 
 ## descriptives
- options(browser="/usr/bin/firefox")
+options(browser="/usr/bin/google-chrome-stable")
 
 tab_df(aggregate(ID ~ Sample, data = dat, FUN = length))
 prop.table(table(dat$gen))*100
@@ -78,7 +78,7 @@ tab_corr(frqdat[-c(1,2)])
 ## creating centered variables
 dat <- get_mean_centered('perc_stigma', 'Sample', dat)
 dat <- get_mean_centered('age', 'Sample', dat)
-## dat <- get_mean_centered('polori', 'Sample', dat)
+dat <- get_mean_centered('polori', 'Sample', dat)
 dat <- get_mean_centered('grpid', 'Sample', dat)
 dat$ins_stigma <- scale(dat$ins_stigma)
 
@@ -98,6 +98,8 @@ dat$grpid <- NULL
 dat$perc_stigma_gm <- NULL
 dat$age_gm <- NULL
 dat$grpid_gm <- NULL
+dat$polori <- NULL
+dat$polori_gm <- NULL
 
 ## multiple imputation step
 
@@ -119,6 +121,7 @@ wilac_perc <- lmerModList(wilac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                               as.factor(gen) +
                               age_gmc +
                               grpid_gmc +
+                              polori_gmc +
                               scale(gini2016) +
                               scale(gdp2016) +
                               (1 | Sample),
@@ -131,6 +134,7 @@ wilac_ins <- lmerModList(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
                              as.factor(gen) +
                              age_gmc +
                              grpid_gmc +
+                             polori_gmc +
                              scale(gini2016) +
                              scale(gdp2016) +
                              (1 | Sample),
@@ -143,6 +147,7 @@ colac_perc <- lmerModList(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                               as.factor(gen) +
                               age_gmc +
                               grpid_gmc +
+                              polori_gmc +
                               scale(gini2016) +
                               scale(gdp2016) +
                               (1 | Sample),
@@ -156,6 +161,7 @@ colac_ins <- lmerModList(colac ~ poly(ins_stigma, 2, raw=FALSE) +
                              as.factor(gen) +
                              age_gmc +
                              grpid_gmc +
+                             polori_gmc +
                              scale(gini2016) +
                              scale(gdp2016) +
                              (1 | Sample),
@@ -168,6 +174,7 @@ mxmodel <- lmer(perc_stigma_mc ~ ins_stigma +
                     as.factor(gen) +
                     age_gmc +
                     grpid_gmc +
+                    polori_gmc +
                     scale(gini2016) +
                     scale(gdp2016) +
                     (1 | Sample),
@@ -180,6 +187,7 @@ ymxmodel <- lmer(colac ~ perc_stigma_mc +
                      as.factor(gen) +
                      age_gmc +
                      grpid_gmc +
+                     polori_gmc +
                      scale(gini2016) +
                      scale(gdp2016) +
                      (1 | Sample),
@@ -199,6 +207,7 @@ fit_explo_wilac <- lm(wilac ~ +
                     as.factor(gen) +
                     age_gmc +
                     grpid_gmc +
+                    polori_gmc +
                     scale(gini2016) +
                     scale(gdp2016),
                     data = dat_imp)
@@ -207,6 +216,7 @@ fit_explo_colac <- lm(colac ~ +
                     as.factor(gen) +
                     age_gmc +
                     grpid_gmc +
+                    polori_gmc +
                     scale(gini2016) +
                     scale(gdp2016),
                 data = dat_imp)
@@ -255,6 +265,8 @@ age <- aggregate(age_mc ~ Sample, data = dat_imp, mean)
 colnames(age) <- c('Sample', 'MAge')
 grpid <- aggregate(grpid_mc ~ Sample, data = dat_imp, mean)
 colnames(grpid) <- c('Sample', 'MGrpid')
+polori <- aggregate(polori_mc ~ Sample, data = dat_imp, mean)
+colnames(polori) <- c('Sample', 'MPolori')
 perc_stigma <- aggregate(perc_stigma_mc ~ Sample, data = dat_imp, mean)
 colnames(perc_stigma) <- c('Sample', 'MPercAccept')
 ins_stigma <- aggregate(ins_stigma ~ Sample, data = dat_imp, mean)
@@ -275,6 +287,7 @@ cntrylvl_dat <- merge(cntrylvl_dat, reswilac, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, rescolac, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, age, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, grpid, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, polori, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, GenProp, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, perc_stigma, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, ins_stigma, by='Sample')
@@ -285,7 +298,7 @@ str(cntrylvl_dat)
 
 ## country level regression
 
-options(browser="/usr/bin/firefox")
+options(browser="/usr/bin/google-chrome-stable")
 
 wilac_ins_country <- lm(MWilac ~ poly(MInsAccept, 2, raw=FALSE) +
                             ## control variables
@@ -296,6 +309,7 @@ wilac_ins_country <- lm(MWilac ~ poly(MInsAccept, 2, raw=FALSE) +
                             other+
                             MAge +
                             MGrpid +
+                            MPolori +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
@@ -311,6 +325,7 @@ colac_ins_country <- lm(MColac ~ poly(MInsAccept, 2, raw=FALSE) +
                             other+
                             MAge +
                             MGrpid +
+                            MPolori +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
@@ -326,6 +341,7 @@ wilac_perc_country <- lm(MWilac ~ poly(MPercAccept, 2, raw=FALSE) +
                             other+
                             MAge +
                             MGrpid +
+                            MPolori +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
@@ -341,6 +357,7 @@ colac_perc_country <- lm(MColac ~ poly(MPercAccept, 2, raw=FALSE) +
                             other+
                             MAge +
                             MGrpid +
+                            MPolori +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
