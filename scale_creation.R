@@ -34,6 +34,7 @@ alpha(rawdata[c('colac2', 'colac3', 'colac4', 'colac6')])
 
 corr.test(rawdata$accep, rawdata$disclo)
 rawdata$perc_stigma <- rowMeans(rawdata[c('accep', 'disclo')], na.rm = TRUE)
+rawdata$perc_stigma <- 8 - rawdata$perc_stigma # reversing for interpretability
 
 ## calculating composite variables
 
@@ -55,9 +56,12 @@ corr.test(rawdata$gai, rawdata$gbgr)
 ## based on our pre-resgistration, the correlation is high enough to conbine the 2 indices
 ## Also reversing and scaling
 
-gai_s <- scale(rawdata$gai)
+rawdata$gai_r <- 10 - rawdata$gai # theoritical maximum plus 
+rawdata$gbgr_r <- 100 - rawdata$gbgr
+    
+gai_s <- scale(rawdata$gai_r)
 gai_s
-gbgr_s <- scale(rawdata$gbgr)
+gbgr_s <- scale(rawdata$gbgr_r)
 gbgr_s
 
 rawdata$ins_stigma <- rowMeans(data.frame(gai_s, gbgr_s),
