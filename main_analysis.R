@@ -216,6 +216,8 @@ ymxmodel_wi <- lmer(wilac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
                  data = dat_imp)
 summary(ymxmodel_wi)
 
+tab_model(mxmodel)
+tab_model(ymxmodel_wi, ymxmodel_co)
 
 ## instantaneous indirect effects calculation
 
@@ -345,7 +347,7 @@ medplot_wi <- ggplot() +
     ylab('Instantaneous Indirect Effect on Collective actions intentions') +
     ylim(-20, 15)
 
-ggsave("plots/medplot.png", arrangeGrob(medplot_co, medplot_wi, nrow=1), width = 40, height = 20,
+ggsave("plots/medplot.png", arrangeGrob(medplot_wi, medplot_co, nrow=1), width = 40, height = 20,
        units = "cm", limitsize = FALSE)
 
 ## graphical explorations
