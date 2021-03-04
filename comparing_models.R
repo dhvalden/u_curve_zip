@@ -1,9 +1,13 @@
 library(lme4)
+library(ggplot2)
+library(Amelia)
 library(merTools)
-#library(lmerTest) # note: this packages interfere with mediation
 library(sjPlot)
 library(psych)
-library(Amelia)
+library(gridExtra)
+library(mice)
+library(miceadds)
+library(lmtest)
 
 options(browser="/usr/bin/google-chrome-stable")
 
@@ -56,22 +60,12 @@ get_mean_centered <- function(y, x, data){
 }
 
 
-## descriptives
-options(browser="/usr/bin/google-chrome-stable")
-
-tab_df(aggregate(ID ~ Sample, data = dat, FUN = length))
-prop.table(table(dat$gen))*100
-
-frqdat <- subset(dat, select = -c(ID, Sample, gen))
-tab_df(describe(frqdat))
-tab_corr(frqdat)
-
 ## creating centered variables
 dat <- get_mean_centered('perc_stigma', 'Sample', dat)
 dat <- get_mean_centered('age', 'Sample', dat)
 dat <- get_mean_centered('polori', 'Sample', dat)
 dat <- get_mean_centered('grpid', 'Sample', dat)
-dat$ins_stigma <- scale(dat$ins_stigma)
+dat$ins_stigma <- as.vector(scale(dat$ins_stigma))
 
 str(dat)
 names(dat)
@@ -96,12 +90,21 @@ dat$polori_gm <- NULL
 
 ## multiple imputation step
 
-set.seed(12345) # set seed for reproducibility
+set.seed(111) # set seed for reproducibility
 
 impute.out <- amelia(dat, noms = c('gen'), idvars = c('Sample'), m = 5)
 summary(impute.out)
 
-dat_imp <- impute.out$imputations$imp1
+a.mids <- datlist2mids(impute.out$imputations)
+
+completedData <- complete(a.mids, 'long')
+
+dat_imp <- aggregate(completedData[-c(1,2)], by=list(completedData$ID), FUN=mean)
+dat_imp$Group.1 <- NULL
+dat_imp$Sample <- NULL
+
+dat_imp <- merge(dat[c('ID','Sample')], dat_imp, by='ID')
+
 
 ## individual level, random intercepts model
 
@@ -126,7 +129,8 @@ wilac_percL <- lmer(wilac ~ perc_stigma_gmc +
                         scale(gdp2016) +
                         (1 | Sample),
                     data = dat_imp)
-anova(wilac_percP, wilac_percL)
+
+lrtest(wilac_percP, wilac_percL)
 
 ##Participation by perceive stigma model
 colac_percP <- lmer(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
@@ -149,7 +153,7 @@ colac_percL <- lmer(colac ~ perc_stigma_gmc +
                         scale(gdp2016) +
                         (1 | Sample),
                     data = dat_imp)
-anova(colac_percP, colac_percL)
+lrtest(colac_percP, colac_percL)
 
 ##Willingness by institutional stigma model
 wilac_insP <- lmer(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
@@ -172,7 +176,7 @@ wilac_insL <- lmer(wilac ~ ins_stigma +
                        scale(gdp2016) +
                        (1 | Sample),
                    data = dat_imp)
-anova(wilac_insP, wilac_insL)
+lrtest(wilac_insP, wilac_insL)
 
 ##Participation by institutional stigma model
 colac_insP <- lmer(colac ~ poly(ins_stigma, 2, raw=FALSE) +
@@ -195,7 +199,7 @@ colac_insL <- lmer(colac ~ ins_stigma +
                        scale(gdp2016) +
                        (1 | Sample),
                    data = dat_imp)
-anova(colac_insP, colac_insL)
+lrtest(colac_insP, colac_insL)
 
 
 ## aggregated country level plots and analysis
@@ -265,7 +269,64 @@ cntrylvl_dat <- merge(cntrylvl_dat, gdp, by='Sample')
 
 str(cntrylvl_dat)
 
-## country level regression
+## country level regression\
+
+wilac_perc_countryP <- lm(MWilac ~ poly(MPercStigma, 2, raw=FALSE) +
+                            ## control variables
+                            male +
+                            female+
+                            inter+
+                            trans+
+                            other+
+                            MAge +
+                            MGrpid +
+                            MPolori +
+                            scale(Gini2016) +
+                            scale(GDPpc2016),
+                        data = cntrylvl_dat)
+wilac_perc_countryL <- lm(MWilac ~ MPercStigma +
+                            ## control variables
+                            male +
+                            female+
+                            inter+
+                            trans+
+                            other+
+                            MAge +
+                            MGrpid +
+                            MPolori +
+                            scale(Gini2016) +
+                            scale(GDPpc2016),
+                        data = cntrylvl_dat)
+lrtest(wilac_perc_countryP, wilac_perc_countryL)
+
+colac_perc_countryP <- lm(MColac ~ poly(MPercStigma, 2, raw=FALSE) +
+                            ## control variables
+                            male +
+                            female+
+                            inter+
+                            trans+
+                            other+
+                            MAge +
+                            MGrpid +
+                            MPolori +
+                            scale(Gini2016) +
+                            scale(GDPpc2016),
+                        data = cntrylvl_dat)
+colac_perc_countryL <- lm(MColac ~ MPercStigma +
+                            ## control variables
+                            male +
+                            female+
+                            inter+
+                            trans+
+                            other+
+                            MAge +
+                            MGrpid +
+                            MPolori +
+                            scale(Gini2016) +
+                            scale(GDPpc2016),
+                        data = cntrylvl_dat)
+lrtest(colac_perc_countryP, colac_perc_countryL)
+
 
 wilac_ins_countryP <- lm(MWilac ~ poly(MInsStigma, 2, raw=FALSE) +
                             ## control variables
@@ -293,7 +354,7 @@ wilac_ins_countryL <- lm(MWilac ~ MInsStigma +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
-anova(wilac_ins_countryP, wilac_ins_countryL)
+lrtest(wilac_ins_countryP, wilac_ins_countryL)
 
 
 colac_ins_countryP <- lm(MColac ~ poly(MInsStigma, 2, raw=FALSE) +
@@ -322,61 +383,4 @@ colac_ins_countryL <- lm(MColac ~ MInsStigma+
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
-anova(colac_ins_countryP, colac_ins_countryL)
-
-
-wilac_perc_countryP <- lm(MWilac ~ poly(MPercStigma, 2, raw=FALSE) +
-                            ## control variables
-                            male +
-                            female+
-                            inter+
-                            trans+
-                            other+
-                            MAge +
-                            MGrpid +
-                            MPolori +
-                            scale(Gini2016) +
-                            scale(GDPpc2016),
-                        data = cntrylvl_dat)
-wilac_perc_countryL <- lm(MWilac ~ MPercStigma +
-                            ## control variables
-                            male +
-                            female+
-                            inter+
-                            trans+
-                            other+
-                            MAge +
-                            MGrpid +
-                            MPolori +
-                            scale(Gini2016) +
-                            scale(GDPpc2016),
-                        data = cntrylvl_dat)
-anova(wilac_perc_countryP, wilac_perc_countryL)
-
-colac_perc_countryP <- lm(MColac ~ poly(MPercStigma, 2, raw=FALSE) +
-                            ## control variables
-                            male +
-                            female+
-                            inter+
-                            trans+
-                            other+
-                            MAge +
-                            MGrpid +
-                            MPolori +
-                            scale(Gini2016) +
-                            scale(GDPpc2016),
-                        data = cntrylvl_dat)
-colac_perc_countryL <- lm(MColac ~ MPercStigma +
-                            ## control variables
-                            male +
-                            female+
-                            inter+
-                            trans+
-                            other+
-                            MAge +
-                            MGrpid +
-                            MPolori +
-                            scale(Gini2016) +
-                            scale(GDPpc2016),
-                        data = cntrylvl_dat)
-anova(colac_perc_countryP, colac_perc_countryL)
+lrtest(colac_ins_countryP, colac_ins_countryL)

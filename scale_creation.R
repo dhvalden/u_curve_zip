@@ -56,7 +56,7 @@ corr.test(rawdata$gai, rawdata$gbgr)
 ## based on our pre-resgistration, the correlation is high enough to conbine the 2 indices
 ## Also reversing and scaling
 
-rawdata$gai_r <- 10 - rawdata$gai # theoritical maximum plus 
+rawdata$gai_r <- 10 - rawdata$gai # theoretical maximum 
 rawdata$gbgr_r <- 100 - rawdata$gbgr
     
 gai_s <- scale(rawdata$gai_r)

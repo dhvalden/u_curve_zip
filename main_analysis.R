@@ -1,21 +1,13 @@
-install.packages('lme4')
-install.packages('merTools')
-install.packages('Amelia')
-install.packages('lmerTest')
-install.packages('mclust')
-install.packages('sjPlot')
-install.packages('mediation')
-
 library(lme4)
 library(ggplot2)
 library(Amelia)
 library(merTools)
-#library(lmerTest) # note: this packages interfere with mediation
-library(mclust)
-library(mediation)
 library(sjPlot)
 library(psych)
 library(gridExtra)
+library(mice)
+library(miceadds)
+
 
 dat <- read.csv('data/fulldataset.csv', row.names = 1)
 names(dat)
@@ -81,7 +73,7 @@ dat <- get_mean_centered('perc_stigma', 'Sample', dat)
 dat <- get_mean_centered('age', 'Sample', dat)
 dat <- get_mean_centered('polori', 'Sample', dat)
 dat <- get_mean_centered('grpid', 'Sample', dat)
-dat$ins_stigma <- scale(dat$ins_stigma)
+dat$ins_stigma <- as.vector(scale(dat$ins_stigma))
 
 str(dat)
 names(dat)
@@ -106,11 +98,12 @@ dat$polori_gm <- NULL
 
 ## multiple imputation step
 
-set.seed(12345) # set seed for reproducibility
+set.seed(111) # set seed for reproducibility
 
 impute.out <- amelia(dat, noms = c('gen'), idvars = c('Sample'), m = 5)
 summary(impute.out)
 
+a.mids <- datlist2mids(impute.out$imputations)
 
 ## null models
 summary(lmerModList(wilac ~ 1 + (1 | Sample),
@@ -133,19 +126,6 @@ wilac_perc <- lmerModList(wilac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                           data = impute.out$imputations)
 summary(wilac_perc)
 
-##Willingness by institutional stigma model
-wilac_ins <- lmerModList(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
-                             ## control variables
-                             as.factor(gen) +
-                             age_gmc +
-                             grpid_gmc +
-                             polori_gmc +
-                             scale(gini2016) +
-                             scale(gdp2016) +
-                             (1 | Sample),
-                         data = impute.out$imputations)
-summary(wilac_ins)
-
 ##Participation by perceive stigma model
 colac_perc <- lmerModList(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                               ## control variables
@@ -159,6 +139,18 @@ colac_perc <- lmerModList(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                           data = impute.out$imputations)
 summary(colac_perc)
 
+##Willingness by institutional stigma model
+wilac_ins <- lmerModList(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
+                             ## control variables
+                             as.factor(gen) +
+                             age_gmc +
+                             grpid_gmc +
+                             polori_gmc +
+                             scale(gini2016) +
+                             scale(gdp2016) +
+                             (1 | Sample),
+                         data = impute.out$imputations)
+summary(wilac_ins)
 
 ##Participation by institutional stigma model
 colac_ins <- lmerModList(colac ~ poly(ins_stigma, 2, raw=FALSE) +
@@ -175,20 +167,33 @@ summary(colac_ins)
 
 ## Mediation analysis
 
+## getting complete data
+
+completedData <- complete(a.mids, 'long')
+
+dat_imp <- aggregate(completedData[-c(1,2)], by=list(completedData$ID), FUN=mean)
+dat_imp$Group.1 <- NULL
+dat_imp$Sample <- NULL
+
+dat_imp <- merge(dat[c('ID','Sample')], dat_imp, by='ID')
+
+dat_imp$genF <- as.factor(dat_imp$gen)
+dat_imp$gini2016S <- as.vector(scale(dat_imp$gini2016))
+dat_imp$gdp2016S <- as.vector(scale(dat_imp$gdp2016))
+
 mxmodel <- lmer(perc_stigma_mc ~ ins_stigma +
-                    as.factor(gen) +
+                    genF +
                     age_gmc +
                     grpid_gmc +
                     polori_gmc +
-                    scale(gini2016) +
-                    scale(gdp2016) +
+                    gini2016S +
+                    gdp2016S +
                     (1 | Sample),
-                data = impute.out$imputations$imp1)
-
+                data = dat_imp)
 summary(mxmodel)
 
-ymxmodel <- lmer(colac ~ perc_stigma_mc +
-                     ins_stigma  +
+ymxmodel_co <- lmer(colac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
+                     poly(ins_stigma, 2, raw = FALSE)  +
                      as.factor(gen) +
                      age_gmc +
                      grpid_gmc +
@@ -196,16 +201,154 @@ ymxmodel <- lmer(colac ~ perc_stigma_mc +
                      scale(gini2016) +
                      scale(gdp2016) +
                      (1 | Sample),
-                 data = impute.out$imputations$imp1)
-summary(ymxmodel)
+                 data = dat_imp)
+summary(ymxmodel_co)
 
-results <- mediation::mediate(mxmodel, ymxmodel, treat='ins_stigma', mediator='perc_stigma_mc',
-                   boot=FALSE, sims = 100)
-summary(results)
+ymxmodel_wi <- lmer(wilac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
+                     poly(ins_stigma, 2, raw = FALSE)  +
+                     as.factor(gen) +
+                     age_gmc +
+                     grpid_gmc +
+                     polori_gmc +
+                     scale(gini2016) +
+                     scale(gdp2016) +
+                     (1 | Sample),
+                 data = dat_imp)
+summary(ymxmodel_wi)
+
+
+## instantaneous indirect effects calculation
+
+iie <- function(M, Y, x, data){
+    M_est <- fixef(M)
+    Y_est <- fixef(Y)
+    control_M_est <- M_est[-c(1,2)]
+    controlnames <- names(control_M_est)
+    means <- rep(1, length=length(controlnames)) ## filling not found with 1s
+    for (i in 1:length(controlnames)){
+        try(
+            means[i] <- mean(data[,controlnames[i]]),
+            silent =  TRUE)
+    }
+    controls <- means*control_M_est
+    a <- as.vector(M_est[2])
+    b1 <- as.vector(Y_est[2])
+    b2 <- as.vector(Y_est[3])
+    i1 <- as.vector(M_est[1])
+    theta <- a*(b1 + 2*b2*(i1 + a*x + sum(controls)))
+    return(theta)
+}
+
+
+xvals <- seq(-1.17764, 3.22305, length.out = 100)
+iievals_co <- iie(mxmodel, ymxmodel_co, xvals, dat_imp)
+iievals_wi <- iie(mxmodel, ymxmodel_wi, xvals, dat_imp)
+
+## Manual simple bootstrap
+
+
+my_boot <- function(formulaM, formulaY, data, B=1000, xvar='ins_stigma', nx=100){
+
+    n = dim(data)[1] 
+    B = 1000
+    xmin = min(data[xvar])
+    xmax = max(data[xvar])
+
+    results = matrix(nrow=B, ncol=nx)
+
+    for(b in 1:B){
+        i <- sample(x = 1:n, size = n, replace = TRUE)
+        temp <- data[i,] 
+        mxmodel_temp <- lmer(as.formula(formulaM),
+                             data = temp)
+        ymxmodel_temp <- lmer(as.formula(formulaY),
+                              data = temp)
+        xvals_temp <- seq(xmin, xmax, length.out = nx)
+        iievals_temp <- iie(mxmodel_temp, ymxmodel_temp, xvals_temp, temp)
+        results[b,] <- iievals_temp
+    }
+    results <- apply(results, 2, sort, decreasing=F)
+    return(results)
+}
+
+fM <- perc_stigma_mc ~ ins_stigma +
+                    genF +
+                    age_gmc +
+                    grpid_gmc +
+                    polori_gmc +
+                    gini2016S +
+                    gdp2016S +
+                    (1 | Sample)
+fY_co <- colac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
+                     poly(ins_stigma, 2, raw = FALSE)  +
+                     as.factor(gen) +
+                     age_gmc +
+                     grpid_gmc +
+                     polori_gmc +
+                     scale(gini2016) +
+                     scale(gdp2016) +
+                     (1 | Sample)
+fY_wi <- wilac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
+                     poly(ins_stigma, 2, raw = FALSE)  +
+                     as.factor(gen) +
+                     age_gmc +
+                     grpid_gmc +
+                     polori_gmc +
+                     scale(gini2016) +
+                     scale(gdp2016) +
+                     (1 | Sample)
+
+
+results_co <- my_boot(fM, fY_co, dat_imp)
+results_wi <- my_boot(fM, fY_wi, dat_imp)
+results_wi
+
+##plots colac
+
+medplot_co <- ggplot() +
+    geom_line(aes(x=xvals, y=iievals_co))+
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed")+
+    geom_ribbon(aes(x=xvals, y=iievals_co,
+                    ymin=results_co[50,], ymax=results_co[950,]),
+                alpha=0.1,
+                fill='red')+
+    geom_ribbon(aes(x=xvals, y=iievals_co,
+                    ymin=results_co[25,], ymax=results_co[975,]),
+                alpha=0.1,
+                fill='blue')+
+    geom_ribbon(aes(x=xvals, y=iievals_co,
+                    ymin=results_co[10,], ymax=results_co[990,]),
+                alpha=0.1,
+                fill='black')+
+    xlab('Institutional Stigma') +
+    ylab('Instantaneous Indirect Effect on Participation in collective actions') +
+    ylim(-20, 15)
+
+##plots wilac
+
+medplot_wi <- ggplot() +
+    geom_line(aes(x=xvals, y=iievals_wi))+
+    geom_abline(slope = 0, intercept = 0, linetype = "dashed")+
+    geom_ribbon(aes(x=xvals, y=iievals_wi,
+                    ymin=results_wi[50,], ymax=results_wi[950,]),
+                alpha=0.1,
+                fill='red')+
+    geom_ribbon(aes(x=xvals, y=iievals_wi,
+                    ymin=results_wi[25,], ymax=results_wi[975,]),
+                alpha=0.1,
+                fill='blue')+
+    geom_ribbon(aes(x=xvals, y=iievals_wi,
+                    ymin=results_wi[10,], ymax=results_wi[990,]),
+                alpha=0.1,
+                fill='black') +
+    xlab('Institutional Stigma') +
+    ylab('Instantaneous Indirect Effect on Collective actions intentions') +
+    ylim(-20, 15)
+
+ggsave("plots/medplot.png", arrangeGrob(medplot_co, medplot_wi, nrow=1), width = 40, height = 20,
+       units = "cm", limitsize = FALSE)
 
 ## graphical explorations
-
-dat_imp <- impute.out$imputations$imp1
 
 fit_explo_wilac <- lm(wilac ~ +
                     ## control variables
@@ -232,27 +375,27 @@ dat_imp$res_colac <- resid(fit_explo_colac)
 g1 <- ggplot(dat_imp, aes(perc_stigma_gmc, res_wilac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
-    xlab("Perceive Stigma") +
+    xlab("Perceived Stigma") +
     ylab("Collective Action Intentions")
-g2 <- ggplot(dat_imp, aes(ins_stigma, res_wilac)) +
+g2 <- ggplot(dat_imp, aes(perc_stigma_gmc, res_colac)) +
+    geom_count(col="tomato3", show.legend=F) +
+    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
+    xlab("Perceived Stigma") +
+    ylab("Participation in Collective Actions")
+ggsave("plots/perc_individual.png", arrangeGrob(g1, g2, nrow=1),width = 30, height = 12,
+       units = "cm", limitsize = FALSE)
+
+g3 <- ggplot(dat_imp, aes(ins_stigma, res_wilac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
     xlab("Institutional Stigma") +
-    theme(axis.title.y = element_blank())
-ggsave("plots/wilac_individual.png", arrangeGrob(g1, g2, nrow=1),width = 30, height = 12,
-       units = "cm", limitsize = FALSE)
-
-g3 <- ggplot(dat_imp, aes(perc_stigma_gmc, res_colac)) +
-    geom_count(col="tomato3", show.legend=F) +
-    stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
-    xlab("Perceive Stigma") +
-    ylab("Participation in Collective Actions")
+    ylab("Collective Action Intentions")
 g4 <- ggplot(dat_imp, aes(ins_stigma, res_colac)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
     xlab("Institutional Stigma") +
-    theme(axis.title.y = element_blank())
-ggsave("plots/colac_individual.png", arrangeGrob(g3, g4, nrow=1),width = 30, height = 12,
+    ylab("Participation in Collective Actions")
+ggsave("plots/ins_individual.png", arrangeGrob(g3, g4, nrow=1),width = 30, height = 12,
        units = "cm", limitsize = FALSE)
 
 
@@ -318,7 +461,7 @@ wilac_ins_country <- lm(MWilac ~ poly(MInsStigma, 2, raw=FALSE) +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
-tab_model(wilac_ins_country, use.viewer=FALSE)
+summary(wilac_ins_country)
 
 
 colac_ins_country <- lm(MColac ~ poly(MInsStigma, 2, raw=FALSE) +
@@ -334,7 +477,7 @@ colac_ins_country <- lm(MColac ~ poly(MInsStigma, 2, raw=FALSE) +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
-tab_model(colac_ins_country, use.viewer=FALSE)
+summary(colac_ins_country)
 
 
 wilac_perc_country <- lm(MWilac ~ poly(MPercStigma, 2, raw=FALSE) +
@@ -350,7 +493,7 @@ wilac_perc_country <- lm(MWilac ~ poly(MPercStigma, 2, raw=FALSE) +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
-tab_model(wilac_perc_country, use.viewer=FALSE)
+summary(wilac_perc_country)
 
 
 colac_perc_country <- lm(MColac ~ poly(MPercStigma, 2, raw=FALSE) +
@@ -366,99 +509,46 @@ colac_perc_country <- lm(MColac ~ poly(MPercStigma, 2, raw=FALSE) +
                             scale(Gini2016) +
                             scale(GDPpc2016),
                         data = cntrylvl_dat)
-tab_model(colac_perc_country, use.viewer=FALSE)
+summary(colac_perc_country)
 
-tab_model(wilac_perc_country, colac_perc_country)
-tab_model(wilac_ins_country, colac_ins_country)
+tab_model(wilac_perc_country, colac_perc_country, show.ci = FALSE, show.se = TRUE)
+tab_model(wilac_ins_country, colac_ins_country, show.ci = FALSE, show.se = TRUE)
 
-g5 <- ggplot(cntrylvl_dat, aes(MPercStigma, reswilac)) +
+library(ggrepel)
+
+g5 <- ggplot(cntrylvl_dat, aes(MPercStigma, reswilac, label=Sample)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
-    xlab('Perceive Stigma') +
-    ylab('Res. Collective Action Intentions') +
+    geom_text_repel(aes(label=Sample), max.overlaps = Inf) +
+    xlab('Perceived Stigma') +
+    ylab('Collective Action Intentions') +
     ylim(-1.5, 1.5)
 
-g6 <- ggplot(cntrylvl_dat, aes(MPercStigma, rescolac)) +
+g6 <- ggplot(cntrylvl_dat, aes(MPercStigma, rescolac, label=Sample)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
-    xlab('Perceive Stigma') +
-    ylab('Res. Participation in Collective Action') +
+    geom_text_repel(aes(label=Sample), max.overlaps = Inf) +
+    xlab('Perceived Stigma') +
+    ylab('Participation in Collective Action') +
     ylim(-1.5, 1.5)
 
-g7 <- ggplot(cntrylvl_dat, aes(MInsStigma, reswilac)) +
+g7 <- ggplot(cntrylvl_dat, aes(MInsStigma, reswilac, label=Sample)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
+    geom_text_repel(aes(label=Sample), max.overlaps = Inf) +
     xlab('Institutional Stigma') +
-    ylab('Res. Collective Action Intentions') +
+    ylab('Collective Action Intentions') +
     ylim(-1.5, 1.5)
 
-g8 <- ggplot(cntrylvl_dat, aes(MInsStigma, rescolac)) +
+g8 <- ggplot(cntrylvl_dat, aes(MInsStigma, rescolac, label=Sample)) +
     geom_count(col="tomato3", show.legend=F) +
     stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1) +
+    geom_text_repel(aes(label=Sample), max.overlaps = Inf) +
     xlab('Institutional Stigma') +
-    ylab('Res. Participation in Collective Action') +
+    ylab('Participation in Collective Action') +
     ylim(-1.5, 1.5)
 
-ggsave("plots/perc_cntry.png", arrangeGrob(g5, g6, nrow=1), width = 30, height = 12,
+ggsave("plots/perc_cntry.png", arrangeGrob(g5, g6, nrow=1), width = 40, height = 20,
        units = "cm", limitsize = FALSE)
-ggsave("plots/ins_cntry.png", arrangeGrob(g7, g8, nrow=1), width = 30, height = 12,
+ggsave("plots/ins_cntry.png", arrangeGrob(g7, g8, nrow=1), width = 40, height = 20,
        units = "cm", limitsize = FALSE)
-
-
-## models for clustering based on estimates of HLM
-
-##Willingness by perceive stigma model
-clust_wilac_perc <- lmer(wilac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
-                              ## control variables
-                              as.factor(gen) +
-                              age_gmc +
-                              grpid_gmc +
-                              scale(gini2016) +
-                              scale(gdp2016) +
-                              (1 + poly(perc_stigma_gmc, 2, raw=FALSE) | Sample),
-                          data = dat_imp)
-
-coefs <- coef(clust_wilac_perc)
-coefs
-
-forclust <- as.data.frame(coefs$Sample['(Intercept)'])
-colnames(forclust) <- c('intercept')
-forclust$linearEffect <- coefs$Sample[,'poly(perc_stigma_gmc, 2, raw = FALSE)1']
-forclust$quadraticEffect <- coefs$Sample[,'poly(perc_stigma_gmc, 2, raw = FALSE)2']
-forclust$WillingessActivism_mean <- aggregate(wilac ~ Sample, mean, data=dat_imp)[,2]
-forclust$InsAcceptance <- aggregate(ins_stigma ~ Sample, mean, data=dat_imp)[,2]
-forclust$Gini2016 <- aggregate(gini2016 ~ Sample, mean, data=dat_imp)[,2]
-forclust$GDPpc2016 <- aggregate(gdp2016 ~ Sample, mean, data=dat_imp)[,2]
-forclust$PercAcceptance_cmean <- aggregate(perc_stigma_mc ~ Sample,
-                                 mean, data=dat_imp)[,2]
-forclust$sample <- row.names(forclust)
-forclust
-write.csv(forclust, 'data/wilac_clustering_data.csv')
-
-##Participation by perceive stigma model
-clust_colac_perc <- lmer(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
-                              ## control variables
-                              as.factor(gen) +
-                              age_gmc +
-                              grpid_gmc +
-                              scale(gini2016) +
-                              scale(gdp2016) +
-                              (1 + poly(perc_stigma_gmc, 2, raw=FALSE) | Sample),
-                          data = dat_imp)
-
-coefs <- coef(clust_colac_perc)
-coefs
-
-forclust <- as.data.frame(coefs$Sample['(Intercept)'])
-colnames(forclust) <- c('intercept')
-forclust$linearEffect <- coefs$Sample[,'poly(perc_stigma_gmc, 2, raw = FALSE)1']
-forclust$quadraticEffect <- coefs$Sample[,'poly(perc_stigma_gmc, 2, raw = FALSE)2']
-forclust$ParticipationActivism_mean <- aggregate(colac ~ Sample, mean, data=dat_imp)[,2]
-forclust$InsAcceptance <- aggregate(ins_stigma ~ Sample, mean, data=dat_imp)[,2]
-forclust$Gini2016 <- aggregate(gini2016 ~ Sample, mean, data=dat_imp)[,2]
-forclust$GDPpc2016 <- aggregate(gdp2016 ~ Sample, mean, data=dat_imp)[,2]
-forclust$PercAcceptance_cmean <- aggregate(perc_stigma_mc ~ Sample,
-                                 mean, data=dat_imp)[,2]
-forclust$sample <- row.names(forclust)
-forclust
-write.csv(forclust, 'data/colac_clustering_data.csv')
