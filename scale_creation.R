@@ -10,24 +10,22 @@ rawdata <- read.csv('data/fulldataset.csv')
 
 ## Willingness
 
-wilac <- ' willingness  =~ wilac1 + wilac2 + wilac3 +
-                           wilac4 +  wilac6 '
+wilac <- ' willingness  =~ wilac1 + wilac2 + wilac3 '
 fitw <- cfa(wilac, data=rawdata, estimator="MLR",  missing="ML")
 summary(fitw, fit.measures=TRUE, modindices=TRUE)
 
 ## Participation
 
-colac <- ' participation  =~ colac2 + colac3 +
-                             colac4 + colac6 '
+colac <- ' participation  =~ colac1 + colac2 + colac3 '
 fitc <- cfa(colac, data=rawdata, estimator="MLR",  missing="ML")
 summary(fitc, fit.measures=TRUE, modindices=TRUE)
 
 ## Cronbach Alpha
 
 ## wilac
-alpha(rawdata[c('wilac1', 'wilac2', 'wilac3', 'wilac4', 'wilac6')])
+alpha(rawdata[c('wilac1', 'wilac2', 'wilac3')])
 ## colac
-alpha(rawdata[c('colac2', 'colac3', 'colac4', 'colac6')])
+alpha(rawdata[c('colac1', 'colac2', 'colac3')])
 
 
 ## Pecieve institutional stigma
@@ -40,14 +38,11 @@ rawdata$perc_stigma <- 8 - rawdata$perc_stigma # reversing for interpretability
 
 rawdata$wilac <- rowMeans(rawdata[c('wilac1',
                                     'wilac2',
-                                    'wilac3',
-                                    'wilac4',
-                                    'wilac6')], na.rm = TRUE)
+                                    'wilac3')], na.rm = TRUE)
 
-rawdata$colac <- rowMeans(rawdata[c('colac2',
-                                    'colac3',
-                                    'colac4',
-                                    'colac6')], na.rm = TRUE)
+rawdata$colac <- rowMeans(rawdata[c('colac1',
+                                    'colac2',
+                                    'colac3')], na.rm = TRUE)
 
 ## correlation beetwen measures of intitutional stigma
 

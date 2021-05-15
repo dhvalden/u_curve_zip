@@ -216,8 +216,8 @@ ymxmodel_wi <- lmer(wilac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
                  data = dat_imp)
 summary(ymxmodel_wi)
 
-tab_model(mxmodel)
-tab_model(ymxmodel_wi, ymxmodel_co)
+tab_model(mxmodel, show.ci = FALSE, show.se = TRUE)
+tab_model(ymxmodel_wi, ymxmodel_co, show.ci = FALSE, show.se = TRUE)
 
 ## instantaneous indirect effects calculation
 
@@ -249,10 +249,9 @@ iievals_wi <- iie(mxmodel, ymxmodel_wi, xvals, dat_imp)
 ## Manual simple bootstrap
 
 
-my_boot <- function(formulaM, formulaY, data, B=1000, xvar='ins_stigma', nx=100){
+my_boot <- function(formulaM, formulaY, data, B=10000, xvar='ins_stigma', nx=100){
 
-    n = dim(data)[1] 
-    B = 1000
+    n = dim(data)[1]
     xmin = min(data[xvar])
     xmax = max(data[xvar])
 
