@@ -553,7 +553,7 @@ summary(ymxmodel_wi)
 
 
 tab_model(mxmodel, show.se = TRUE)
-tab_model(ymxmodel_co, ymxmodel_wi, show.se = TRUE)
+tab_model(ymxmodel_wi, ymxmodel_co, show.se = TRUE)
 
 ###############################################
 ## instantaneous indirect effects calculation

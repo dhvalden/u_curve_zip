@@ -25,6 +25,12 @@ dim(clean_df)
 table(clean_df$Sample)
 length(unique(clean_df$Sample))
 
+## Rowwise missing value counts
+
+rowmissing <- rowSums(is.na(clean_df))/20
+
+table(rowmissing)
+
 ## Saving as cleanzip.csv
 
 write.csv(clean_df, 'data/cleanzip.csv')
