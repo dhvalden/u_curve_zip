@@ -113,7 +113,7 @@ set.seed(111) # set seed for reproducibility
 
 impute.out <- amelia(dat, noms = c('gen'), idvars = c('Sample'), m = 5)
 summary(impute.out)
-
+ 
 a.mids <- datlist2mids(impute.out$imputations)
 
 str(impute.out)
@@ -169,7 +169,7 @@ wilac_perc <- brm_multiple(wilac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                           data = a.mids,
                           prior = mypriors_perc,
                           cores = 2,
-                          file = 'wilac_perc')
+                          file = 'models/wilac_perc')
 summary(wilac_perc)
 
 ##Participation by perceive stigma model
@@ -185,7 +185,7 @@ colac_perc <- brm_multiple(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                           data = a.mids,
                           prior = mypriors_perc,
                           cores = 2,
-                          file = 'colac_perc')
+                          file = 'models/colac_perc')
 summary(colac_perc)
 
 ##Willingness by institutional stigma model
@@ -201,7 +201,7 @@ wilac_ins <- brm_multiple(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
                          data = a.mids,
                          prior = mypriors_ins,
                          cores = 2,
-                         file = 'wilac_ins')
+                         file = 'models/wilac_ins')
 summary(wilac_ins)
 
 ##Participation by institutional stigma model
@@ -218,14 +218,16 @@ colac_ins <- brm_multiple(colac ~ poly(ins_stigma, 2, raw=FALSE) +
                          data = a.mids,
                          prior = mypriors_ins,
                          cores = 2,
-                         file = 'colac_ins')
+                         file = 'models/colac_ins')
 summary(colac_ins)
+
+tab_model(wilac_perc, colac_perc, show.se = TRUE)
+tab_model(wilac_ins, colac_ins, show.se = TRUE)
 
 ####
 ##Country Level
 ###
 
-## aggregated country level plots and analysis
 ## getting complete data
 
 completedData <- complete(a.mids, 'long')
@@ -516,7 +518,7 @@ mxmodel <- brm_multiple(perc_stigma_mc ~ ins_stigma +
                         data = a.mids,
                         prior = mx_priors,
                         cores = 2,
-                        file = 'mxmodel')
+                        file = 'models/mxmodel')
 summary(mxmodel)
 
 ymxmodel_co <- brm_multiple(colac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
@@ -532,7 +534,7 @@ ymxmodel_co <- brm_multiple(colac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
                             data = a.mids,
                             prior = ymx_priors,
                             cores = 2,
-                            file = 'ymxmodel_co')
+                            file = 'models/ymxmodel_co')
 summary(ymxmodel_co)
 
 ymxmodel_wi <-  brm_multiple(wilac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
@@ -548,7 +550,7 @@ ymxmodel_wi <-  brm_multiple(wilac ~ poly(perc_stigma_mc, 2, raw = FALSE) +
                              data = a.mids,
                              prior = ymx_priors,
                              cores = 2,
-                             file = 'ymxmodel_wi')
+                             file = 'models/ymxmodel_wi')
 summary(ymxmodel_wi)
 
 

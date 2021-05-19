@@ -20,16 +20,21 @@ colnames(sample_size) <- c('Sample', 'sample_size')
 clean_df <- merge(clean_df, sample_size, by='Sample')
 clean_df <- clean_df[clean_df$sample_size >= 15, ]
 
+
+## Rowwise missing value counts and filtering
+
+clean_df$row_missing_prop <- rowSums(is.na(clean_df))/20 # Assuming only 20 collumns can have missing values
+table(clean_df$row_missing_prop)
+## filtering
+dim(clean_df)
+clean_df <- clean_df[clean_df$row_missing_prop <= .2, ] #keeping only 80% completness rows
+dim(clean_df)
+
 ## sanity checks
 dim(clean_df)
 table(clean_df$Sample)
 length(unique(clean_df$Sample))
-
-## Rowwise missing value counts
-
-rowmissing <- rowSums(is.na(clean_df))/20
-
-table(rowmissing)
+str(clean_df)
 
 ## Saving as cleanzip.csv
 
