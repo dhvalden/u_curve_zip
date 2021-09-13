@@ -21,7 +21,7 @@ table(dat$polori)
 
 dat <- dat[c('ID',
              'Sample',
-             'gen',
+             'gen_min',
              'age',
              'polori',
              'grpid',
@@ -60,12 +60,12 @@ get_mean_centered <- function(y, x, data){
 ## descriptives
 #################
 
-options(browser="/usr/bin/google-chrome-stable")
+options(browser="/usr/bin/firefox")
 
 tab_df(aggregate(ID ~ Sample, data = dat, FUN = length))
-prop.table(table(dat$gen))*100
+prop.table(table(dat$gen_min))*100
 
-frqdat <- subset(dat, select = -c(ID, Sample, gen))
+frqdat <- subset(dat, select = -c(ID, Sample, gen_min))
 tab_df(describe(frqdat))
 tab_corr(frqdat)
 
@@ -106,11 +106,11 @@ dat$gdp2016 <- NULL
 ## multiple imputation step
 #############################
 
-dat$gen <- as.factor(dat$gen)
+dat$gen_min <- as.factor(dat$gen_min)
 
 set.seed(111) # set seed for reproducibility
 
-impute.out <- amelia(dat, noms = c('gen'), idvars = c('Sample'), m = 5)
+impute.out <- amelia(dat, noms = c('gen_min'), idvars = c('Sample'), m = 5)
 summary(impute.out)
  
 a.mids <- datlist2mids(impute.out$imputations)
@@ -128,104 +128,109 @@ str(impute.out)
 ## Setting proper priors fro misspecified priors in the default configuration.
 
 mypriors_perc <- c(prior(normal(0, 10), class = "Intercept"),
-              prior(normal(0, 20), class = "b", coef = "polyperc_stigma_gmc2rawEQFALSE1"),
-              prior(normal(0, 20), class = "b", coef = "polyperc_stigma_gmc2rawEQFALSE2"),
-              prior(normal(0, 20), class = "b", coef = "age_gmc"),
-              prior(normal(0, 2), class = "b", coef = "gen2"),
-              prior(normal(0, 2), class = "b", coef = "gen3"),
-              prior(normal(0, 2), class = "b", coef = "gen4"),
-              prior(normal(0, 2), class = "b", coef = "gen5"),
-              prior(normal(0, 20), class = "b", coef = "grpid_gmc"),
-              prior(normal(0, 20), class = "b", coef = "polori_gmc"),
-              prior(normal(0, 20), class = "b", coef = "gdp2016s"),
-              prior(normal(0, 20), class = "b", coef = "gini2016s")
+              prior(normal(0, 10), class = "b", coef = "polyperc_stigma_gmc2rawEQFALSE1"),
+              prior(normal(0, 10), class = "b", coef = "polyperc_stigma_gmc2rawEQFALSE2"),
+              prior(normal(0, 10), class = "b", coef = "age_gmc"),
+              prior(normal(0, 10), class = "b", coef = "gen_min1"),
+              prior(normal(0, 10), class = "b", coef = "grpid_gmc"),
+              #prior(normal(0, 10), class = "b", coef = "polori_gmc"),
+              prior(normal(0, 10), class = "b", coef = "gdp2016s"),
+              prior(normal(0, 10), class = "b", coef = "gini2016s")
               )
 
 mypriors_ins <- c(prior(normal(0, 10), class = "Intercept"),
-              prior(normal(0, 20), class = "b", coef = "polyins_stigma2rawEQFALSE1"),
-              prior(normal(0, 20), class = "b", coef = "polyins_stigma2rawEQFALSE2"),
-              prior(normal(0, 20), class = "b", coef = "age_gmc"),
-              prior(normal(0, 2), class = "b", coef = "gen2"),
-              prior(normal(0, 2), class = "b", coef = "gen3"),
-              prior(normal(0, 2), class = "b", coef = "gen4"),
-              prior(normal(0, 2), class = "b", coef = "gen5"),
-              prior(normal(0, 20), class = "b", coef = "grpid_gmc"),
-              prior(normal(0, 20), class = "b", coef = "polori_gmc"),
-              prior(normal(0, 20), class = "b", coef = "gdp2016s"),
-              prior(normal(0, 20), class = "b", coef = "gini2016s")
+              prior(normal(0, 10), class = "b", coef = "polyins_stigma2rawEQFALSE1"),
+              prior(normal(0, 10), class = "b", coef = "polyins_stigma2rawEQFALSE2"),
+              prior(normal(0, 10), class = "b", coef = "age_gmc"),
+              prior(normal(0, 10), class = "b", coef = "gen_min1"),
+              prior(normal(0, 10), class = "b", coef = "grpid_gmc"),
+              #prior(normal(0, 10), class = "b", coef = "polori_gmc"),
+              prior(normal(0, 10), class = "b", coef = "gdp2016s"),
+              prior(normal(0, 10), class = "b", coef = "gini2016s")
               )
 
-
 wilac_perc <- brm_multiple(wilac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
-                              ## control variables
-                              gen +
-                              age_gmc +
-                              grpid_gmc +
-                              polori_gmc +
-                              gini2016s +
-                              gdp2016s +
-                              (1 | Sample),
-                          data = a.mids,
-                          prior = mypriors_perc,
-                          cores = 2,
-                          save_pars = save_pars(all = TRUE),
-                          silent = 2,
-                          file = 'models/wilac_perc')
+                               ## control variables
+                               gen_min +
+                               age_gmc +
+                               grpid_gmc +
+                               #polori_gmc +
+                               gini2016s +
+                               gdp2016s +
+                               (1 | Sample),
+                           data = a.mids,
+                           prior = mypriors_perc,
+                           cores = 3,
+                           seed = 123,
+                           refresh = 0,
+                           open_progress = FALSE,
+                           save_pars = save_pars(all = TRUE),
+                                        #file = 'models/wilac_perc'
+                           )
 summary(wilac_perc)
 
 ##Participation by perceive stigma model
 colac_perc <- brm_multiple(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                               ## control variables
-                              gen +
+                              gen_min +
                               age_gmc +
                               grpid_gmc +
-                              polori_gmc +
+                              #polori_gmc +
                               gini2016s +
                               gdp2016s +
                               (1 | Sample),
                           data = a.mids,
                           prior = mypriors_perc,
-                          cores = 2,
+                          cores = 3,
+                          seed = 222,
+                          refresh = 0,
+                          open_progress = FALSE,
                           save_pars = save_pars(all = TRUE),
-                          silent = 2,
-                          file = 'models/colac_perc')
+                          #file = 'models/colac_perc'
+                          )
 summary(colac_perc)
 
 ##Willingness by institutional stigma model
 wilac_ins <- brm_multiple(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
                              ## control variables
-                             gen +
+                             gen_min +
                              age_gmc +
                              grpid_gmc +
-                             polori_gmc +
+                             #polori_gmc +
                              gini2016s +
                              gdp2016s +
                              (1 | Sample),
                          data = a.mids,
                          prior = mypriors_ins,
-                         cores = 2,
+                         cores = 3,
+                         seed = 111,
+                         refresh = 0,
+                         open_progress = FALSE,
                          save_pars = save_pars(all = TRUE),
-                         silent = 2,
-                         file = 'models/wilac_ins')
+                         # file = 'models/wilac_ins'
+                         )
 summary(wilac_ins)
 
 ##Participation by institutional stigma model
 
 colac_ins <- brm_multiple(colac ~ poly(ins_stigma, 2, raw=FALSE) +
                              ## control variables
-                             gen +
+                             gen_min +
                              age_gmc +
                              grpid_gmc +
-                             polori_gmc +
+                             #polori_gmc +
                              gini2016s +
                              gdp2016s +
                              (1 | Sample),
                          data = a.mids,
                          prior = mypriors_ins,
-                         cores = 2,
+                         cores = 3,
+                         seed = 111,
+                         refresh = 0,
+                         open_progress = FALSE,
                          save_pars = save_pars(all = TRUE),
-                         silent = 2,
-                         file = 'models/colac_ins')
+                         # file = 'models/colac_ins'
+                         )
 summary(colac_ins)
 
 tab_model(wilac_perc, colac_perc, show.se = TRUE)
@@ -234,94 +239,100 @@ tab_model(wilac_ins, colac_ins, show.se = TRUE)
 ##Linear model for comparison
 
 mypriors_perc_linear <- c(prior(normal(0, 10), class = "Intercept"),
-                          prior(normal(0, 20), class = "b", coef = "perc_stigma_gmc"),
-                          prior(normal(0, 20), class = "b", coef = "age_gmc"),
-                          prior(normal(0, 2), class = "b", coef = "gen2"),
-                          prior(normal(0, 2), class = "b", coef = "gen3"),
-                          prior(normal(0, 2), class = "b", coef = "gen4"),
-                          prior(normal(0, 2), class = "b", coef = "gen5"),
-                          prior(normal(0, 20), class = "b", coef = "grpid_gmc"),
-                          prior(normal(0, 20), class = "b", coef = "polori_gmc"),
-                          prior(normal(0, 20), class = "b", coef = "gdp2016s"),
-                          prior(normal(0, 20), class = "b", coef = "gini2016s")
+                          prior(normal(0, 10), class = "b", coef = "perc_stigma_gmc"),
+                          prior(normal(0, 10), class = "b", coef = "age_gmc"),
+                          prior(normal(0, 10), class = "b", coef = "gen_min1"),
+                          prior(normal(0, 10), class = "b", coef = "grpid_gmc"),
+                          #prior(normal(0, 10), class = "b", coef = "polori_gmc"),
+                          prior(normal(0, 10), class = "b", coef = "gdp2016s"),
+                          prior(normal(0, 10), class = "b", coef = "gini2016s")
                           )
 
 mypriors_ins_linear <- c(prior(normal(0, 10), class = "Intercept"),
-                         prior(normal(0, 20), class = "b", coef = "ins_stigma"),
-                         prior(normal(0, 20), class = "b", coef = "age_gmc"),
-                         prior(normal(0, 2), class = "b", coef = "gen2"),
-                         prior(normal(0, 2), class = "b", coef = "gen3"),
-                         prior(normal(0, 2), class = "b", coef = "gen4"),
-                         prior(normal(0, 2), class = "b", coef = "gen5"),
-                         prior(normal(0, 20), class = "b", coef = "grpid_gmc"),
-                         prior(normal(0, 20), class = "b", coef = "polori_gmc"),
-                         prior(normal(0, 20), class = "b", coef = "gdp2016s"),
-                         prior(normal(0, 20), class = "b", coef = "gini2016s")
+                         prior(normal(0, 10), class = "b", coef = "ins_stigma"),
+                         prior(normal(0, 10), class = "b", coef = "age_gmc"),
+                         prior(normal(0, 10), class = "b", coef = "gen_min1"),
+                         prior(normal(0, 10), class = "b", coef = "grpid_gmc"),
+                         #prior(normal(0, 10), class = "b", coef = "polori_gmc"),
+                         prior(normal(0, 10), class = "b", coef = "gdp2016s"),
+                         prior(normal(0, 10), class = "b", coef = "gini2016s")
                          )
 
 wilac_perc_linear <- brm_multiple(wilac ~ perc_stigma_gmc +
                                       ## control variables
-                                      gen +
+                                      gen_min +
                                       age_gmc +
                                       grpid_gmc +
-                                      polori_gmc +
+                                      #polori_gmc +
                                       gini2016s +
                                       gdp2016s +
                                       (1 | Sample),
                                   data = a.mids,
                                   prior = mypriors_perc_linear,
-                                  cores = 2,
+                                  cores = 3,
+                                  seed = 111,
+                                  refresh = 0,
+                                  open_progress = FALSE,
                                   save_pars = save_pars(all = TRUE),
-                                  silent = 2,
-                                  file = 'models/wilac_perc_linear')
+                                  #file = 'models/wilac_perc_linear'
+                                  )
 
 colac_perc_linear <- brm_multiple(colac ~ perc_stigma_gmc +
                                       ## control variables
-                                      gen +
+                                      gen_min +
                                       age_gmc +
                                       grpid_gmc +
-                                      polori_gmc +
+                                      #polori_gmc +
                                       gini2016s +
                                       gdp2016s +
                                       (1 | Sample),
                                   data = a.mids,
                                   prior = mypriors_perc_linear,
-                                  cores = 2,
+                                  cores = 3,
+                                  seed = 111,
+                                  refresh = 0,
+                                  open_progress = FALSE,
                                   save_pars = save_pars(all = TRUE),
-                                  silent = 2,
-                                  file = 'models/colac_perc_linear')
+                                  #file = 'models/colac_perc_linear'
+                                  )
 
 wilac_ins_linear <- brm_multiple(wilac ~ ins_stigma +
                                      ## control variables
-                                     gen +
+                                     gen_min +
                                      age_gmc +
                                      grpid_gmc +
-                                     polori_gmc +
+                                     #polori_gmc +
                                      gini2016s +
                                      gdp2016s +
                                      (1 | Sample),
                                  data = a.mids,
                                  prior = mypriors_ins_linear,
-                                 cores = 2,
+                                 cores = 3,
+                                 seed = 111,
+                                 refresh = 0,
+                                 open_progress = FALSE,
                                  save_pars = save_pars(all = TRUE),
-                                 silent = 2,
-                                 file = 'models/wilac_ins_linear')
+                                 #file = 'models/wilac_ins_linear'
+                                 )
 
 colac_ins_linear <- brm_multiple(colac ~ ins_stigma +
                                      ## control variables
-                                     gen +
+                                     gen_min +
                                      age_gmc +
                                      grpid_gmc +
-                                     polori_gmc +
+                                     #polori_gmc +
                                      gini2016s +
                                      gdp2016s +
                                      (1 | Sample),
                                  data = a.mids,
                                  prior = mypriors_ins_linear,
-                                 cores = 2,
+                                 cores = 3,
+                                 seed = 111,
+                                 refresh = 0,
+                                 open_progress = FALSE,
                                  save_pars = save_pars(all = TRUE),
-                                 silent = 2,
-                                 file = 'models/colac_ins_linear')
+                                 #file = 'models/colac_ins_linear'
+                                 )
 
 
 bayes_factor(wilac_perc, wilac_perc_linear)
@@ -341,9 +352,9 @@ completedData <- complete(a.mids, 'long')
 dat_imp <- aggregate(completedData[-c(1,2)], by=list(completedData$ID), FUN=mean)
 dat_imp$Group.1 <- NULL
 dat_imp$Sample <- NULL
-dat_imp$gen <- NULL
+dat_imp$gen_min <- NULL
 
-dat_imp <- merge(dat[c('ID','Sample','gen')], dat_imp, by='ID')
+dat_imp <- merge(dat[c('ID','Sample', 'gen_min')], dat_imp, by='ID')
 
 wilac <- aggregate(wilac ~ Sample, data = dat_imp, mean)
 colnames(wilac) <- c('Sample', 'MWilac')
@@ -364,17 +375,17 @@ colnames(gini) <- c('Sample', 'Gini2016')
 gdp <- aggregate(gdp2016s ~ Sample, data = dat_imp, mean)
 colnames(gdp) <- c('Sample', 'GDPpc2016')
 
-GenProp <- prop.table(table(dat_imp$Sample, dat_imp$gen), 1)
-GenProp <- as.data.frame.matrix(GenProp)
+Gen_minProp <- prop.table(table(dat_imp$Sample, dat_imp$gen_min), 1)
+Gen_minProp <- as.data.frame.matrix(Gen_minProp)
 
-colnames(GenProp) <- c('male', 'female', 'inter', 'trans', 'other')
-GenProp$Sample <- row.names(GenProp)
+colnames(Gen_minProp) <- c('prop_no_gen_min', 'prop_gen_min')
+Gen_minProp$Sample <- row.names(Gen_minProp)
 
 cntrylvl_dat <- merge(wilac, colac, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, age, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, grpid, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, polori, by='Sample')
-cntrylvl_dat <- merge(cntrylvl_dat, GenProp, by='Sample')
+cntrylvl_dat <- merge(cntrylvl_dat, Gen_minProp, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, perc_stigma, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, ins_stigma, by='Sample')
 cntrylvl_dat <- merge(cntrylvl_dat, gini, by='Sample')
@@ -386,11 +397,7 @@ country_priors_ins <- c(prior(normal(0, 10), class = "Intercept"),
               prior(normal(0, 10), class = "b", coef = "polyMInsStigma2rawEQFALSE1"),
               prior(normal(0, 10), class = "b", coef = "polyMInsStigma2rawEQFALSE2"),
               prior(normal(0, 10), class = "b", coef = "MAge"),
-              prior(normal(0, 10), class = "b", coef = "male"),
-              prior(normal(0, 10), class = "b", coef = "female"),
-              prior(normal(0, 10), class = "b", coef = "inter"),
-              prior(normal(0, 10), class = "b", coef = "trans"),
-              prior(normal(0, 10), class = "b", coef = "other"),
+              prior(normal(0, 10), class = "b", coef = "prop_gen_min"),
               prior(normal(0, 10), class = "b", coef = "MGrpid"),
               prior(normal(0, 10), class = "b", coef = "MPolori"),
               prior(normal(0, 10), class = "b", coef = "GDPpc2016"),
@@ -401,11 +408,7 @@ country_priors_perc <- c(prior(normal(0, 10), class = "Intercept"),
               prior(normal(0, 10), class = "b", coef = "polyMPercStigma2rawEQFALSE1"),
               prior(normal(0, 10), class = "b", coef = "polyMPercStigma2rawEQFALSE2"),
               prior(normal(0, 10), class = "b", coef = "MAge"),
-              prior(normal(0, 10), class = "b", coef = "male"),
-              prior(normal(0, 10), class = "b", coef = "female"),
-              prior(normal(0, 10), class = "b", coef = "inter"),
-              prior(normal(0, 10), class = "b", coef = "trans"),
-              prior(normal(0, 10), class = "b", coef = "other"),
+              prior(normal(0, 10), class = "b", coef = "prop_gen_min"),
               prior(normal(0, 10), class = "b", coef = "MGrpid"),
               prior(normal(0, 10), class = "b", coef = "MPolori"),
               prior(normal(0, 10), class = "b", coef = "GDPpc2016"),
@@ -417,11 +420,7 @@ country_priors_perc <- c(prior(normal(0, 10), class = "Intercept"),
 
 wilac_ins_country <- brm(MWilac ~ poly(MInsStigma, 2, raw=FALSE) +
                              ## control variables
-                             male +
-                             female +
-                             inter +
-                             trans +
-                             other +
+                             prop_gen_min +
                              MAge +
                              MGrpid +
                              MPolori +
@@ -435,11 +434,7 @@ summary(wilac_ins_country)
 
 colac_ins_country <- brm(MColac ~ poly(MInsStigma, 2, raw=FALSE) +
                              ## control variables
-                             male +
-                             female +
-                             inter +
-                             trans +
-                             other +
+                             prop_gen_min +
                              MAge +
                              MGrpid +
                              MPolori +
@@ -452,17 +447,13 @@ summary(colac_ins_country)
 
 
 wilac_perc_country <- brm(MWilac ~ poly(MPercStigma, 2, raw=FALSE) +
-                              ## control variables
-                              male +
-                              female +
-                              inter +
-                              trans +
-                              other +
-                              MAge +
-                              MGrpid +
-                              MPolori +
-                              Gini2016 +
-                              GDPpc2016,
+                             ## control variables
+                             prop_gen_min +
+                             MAge +
+                             MGrpid +
+                             MPolori +
+                             Gini2016 +
+                             GDPpc2016,
                           data = cntrylvl_dat,
                           save_pars = save_pars(all = TRUE),
                           prior = country_priors_perc)
@@ -470,17 +461,13 @@ summary(wilac_perc_country)
 
 
 colac_perc_country <- brm(MColac ~ poly(MPercStigma, 2, raw=FALSE) +
-                              ## control variables
-                              male +
-                              female +
-                              inter +
-                              trans +
-                              other +
-                              MAge +
-                              MGrpid +
-                              MPolori +
-                              Gini2016 +
-                              GDPpc2016,
+                             ## control variables
+                             prop_gen_min +
+                             MAge +
+                             MGrpid +
+                             MPolori +
+                             Gini2016 +
+                             GDPpc2016,
                           data = cntrylvl_dat,
                           save_pars = save_pars(all = TRUE),
                           prior = country_priors_perc)
@@ -494,13 +481,9 @@ tab_model(wilac_ins_country, colac_ins_country, show.se = TRUE)
 country_priors_ins_linear <- c(prior(normal(0, 10), class = "Intercept"),
                                prior(normal(0, 10), class = "b", coef = "MInsStigma"),
                                prior(normal(0, 10), class = "b", coef = "MAge"),
-                               prior(normal(0, 10), class = "b", coef = "male"),
-                               prior(normal(0, 10), class = "b", coef = "female"),
-                               prior(normal(0, 10), class = "b", coef = "inter"),
-                               prior(normal(0, 10), class = "b", coef = "trans"),
-                               prior(normal(0, 10), class = "b", coef = "other"),
+                               prior(normal(0, 10), class = "b", coef = "prop_gen_min"),
                                prior(normal(0, 10), class = "b", coef = "MGrpid"),
-                               prior(normal(0, 10), class = "b", coef = "MPolori"),
+                               #prior(normal(0, 10), class = "b", coef = "MPolori"),
                                prior(normal(0, 10), class = "b", coef = "GDPpc2016"),
                                prior(normal(0, 10), class = "b", coef = "Gini2016")
                                )
@@ -508,27 +491,19 @@ country_priors_ins_linear <- c(prior(normal(0, 10), class = "Intercept"),
 country_priors_perc_linear <- c(prior(normal(0, 10), class = "Intercept"),
                                 prior(normal(0, 10), class = "b", coef = "MPercStigma"),
                                 prior(normal(0, 10), class = "b", coef = "MAge"),
-                                prior(normal(0, 10), class = "b", coef = "male"),
-                                prior(normal(0, 10), class = "b", coef = "female"),
-                                prior(normal(0, 10), class = "b", coef = "inter"),
-                                prior(normal(0, 10), class = "b", coef = "trans"),
-                                prior(normal(0, 10), class = "b", coef = "other"),
+                                prior(normal(0, 10), class = "b", coef = "prop_gen_min"),
                                 prior(normal(0, 10), class = "b", coef = "MGrpid"),
-                                prior(normal(0, 10), class = "b", coef = "MPolori"),
+                                #prior(normal(0, 10), class = "b", coef = "MPolori"),
                                 prior(normal(0, 10), class = "b", coef = "GDPpc2016"),
                                 prior(normal(0, 10), class = "b", coef = "Gini2016")
                                 )
 
 wilac_ins_country_linear <- brm(MWilac ~ MInsStigma +
                              ## control variables
-                             male +
-                             female +
-                             inter +
-                             trans +
-                             other +
+                             prop_gen_min +
                              MAge +
                              MGrpid +
-                             MPolori +
+                             #MPolori +
                              Gini2016 +
                              GDPpc2016,
                              data = cntrylvl_dat,
@@ -537,14 +512,10 @@ wilac_ins_country_linear <- brm(MWilac ~ MInsStigma +
 
 colac_ins_country_linear <- brm(MColac ~ MInsStigma +
                              ## control variables
-                             male +
-                             female +
-                             inter +
-                             trans +
-                             other +
+                             prop_gen_min +
                              MAge +
                              MGrpid +
-                             MPolori +
+                             #MPolori +
                              Gini2016 +
                              GDPpc2016,
                              data = cntrylvl_dat,
@@ -553,14 +524,10 @@ colac_ins_country_linear <- brm(MColac ~ MInsStigma +
 
 wilac_perc_country_linear <- brm(MWilac ~ MPercStigma +
                              ## control variables
-                             male +
-                             female +
-                             inter +
-                             trans +
-                             other +
+                             prop_gen_min +
                              MAge +
                              MGrpid +
-                             MPolori +
+                             #MPolori +
                              Gini2016 +
                              GDPpc2016,
                              data = cntrylvl_dat,
@@ -569,14 +536,10 @@ wilac_perc_country_linear <- brm(MWilac ~ MPercStigma +
 
 colac_perc_country_linear <- brm(MColac ~ MPercStigma +
                              ## control variables
-                             male +
-                             female +
-                             inter +
-                             trans +
-                             other +
+                             prop_gen_min +
                              MAge +
                              MGrpid +
-                             MPolori +
+                             #MPolori +
                              Gini2016 +
                              GDPpc2016,
                              data = cntrylvl_dat,
@@ -691,10 +654,10 @@ ggsave("plots/ins_cntry.png", arrangeGrob(g7, g8, nrow=1), width = 40, height = 
 mx_priors <- c(prior(normal(0, 10), class = "Intercept"),
               prior(normal(0, 10), class = "b", coef = "ins_stigma"),
               prior(normal(0, 10), class = "b", coef = "age_gmc"),
-              prior(normal(0, 2), class = "b", coef = "gen2"),
-              prior(normal(0, 2), class = "b", coef = "gen3"),
-              prior(normal(0, 2), class = "b", coef = "gen4"),
-              prior(normal(0, 2), class = "b", coef = "gen5"),
+              prior(normal(0, 10), class = "b", coef = "gen2"),
+              prior(normal(0, 10), class = "b", coef = "gen3"),
+              prior(normal(0, 10), class = "b", coef = "gen4"),
+              prior(normal(0, 10), class = "b", coef = "gen5"),
               prior(normal(0, 10), class = "b", coef = "grpid_gmc"),
               prior(normal(0, 10), class = "b", coef = "polori_gmc"),
               prior(normal(0, 10), class = "b", coef = "gdp2016s"),
@@ -707,10 +670,10 @@ ymx_priors <- c(prior(normal(0, 10), class = "Intercept"),
                 prior(normal(0, 10), class = "b", coef = "polyins_stigma2rawEQFALSE1"),
                 prior(normal(0, 10), class = "b", coef = "polyins_stigma2rawEQFALSE2"),
                 prior(normal(0, 10), class = "b", coef = "age_gmc"),
-                prior(normal(0, 2), class = "b", coef = "gen2"),
-                prior(normal(0, 2), class = "b", coef = "gen3"),
-                prior(normal(0, 2), class = "b", coef = "gen4"),
-                prior(normal(0, 2), class = "b", coef = "gen5"),
+                prior(normal(0, 10), class = "b", coef = "gen2"),
+                prior(normal(0, 10), class = "b", coef = "gen3"),
+                prior(normal(0, 10), class = "b", coef = "gen4"),
+                prior(normal(0, 10), class = "b", coef = "gen5"),
                 prior(normal(0, 10), class = "b", coef = "grpid_gmc"),
                 prior(normal(0, 10), class = "b", coef = "polori_gmc"),
                 prior(normal(0, 10), class = "b", coef = "gdp2016s"),

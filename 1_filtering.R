@@ -1,6 +1,6 @@
 library(psych)
 
-df <- read.csv2('data/zipdata.csv')
+df <- read.csv2('data/zipdata2.csv')
 
 str(df)
 
@@ -20,15 +20,17 @@ colnames(sample_size) <- c('Sample', 'sample_size')
 clean_df <- merge(clean_df, sample_size, by='Sample')
 clean_df <- clean_df[clean_df$sample_size >= 15, ]
 
+## correcting gender minority self-classification
 
-## Rowwise missing value counts and filtering
+gen_min_gen <- clean_df$gen >= 3
+gen_min_trans <- clean_df$trans < 4
 
-clean_df$row_missing_prop <- rowSums(is.na(clean_df))/20 # Assuming only 20 collumns can have missing values
-table(clean_df$row_missing_prop)
-## filtering
-dim(clean_df)
-clean_df <- clean_df[clean_df$row_missing_prop <= .2, ] #keeping only 80% completness rows
-dim(clean_df)
+temp_gen_min_df <- data.frame(gen_min_gen, gen_min_trans) 
+gen_min_final <- as.numeric(rowSums(temp_gen_min_df, na.rm = TRUE) > 0)
+
+clean_df$gen_min <- gen_min_final
+
+table(clean_df$gen_min)
 
 ## sanity checks
 dim(clean_df)
