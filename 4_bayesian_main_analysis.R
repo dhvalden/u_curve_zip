@@ -748,10 +748,6 @@ a <- as.vector(posterior_samples(mxmodel, 'ins_stigma', as.matrix = T))
 i1 <- as.vector(posterior_samples(mxmodel, 'b_Intercept', as.matrix = T))
 b1 <- as.vector(posterior_samples(ymxmodel_co, 'polyperc_stigma_mc2rawEQFALSE1', as.matrix=T))
 b2 <- as.vector(posterior_samples(ymxmodel_co, 'polyperc_stigma_mc2rawEQFALSE2', as.matrix=T))
-a <- sort(a)
-i1 <- sort(i1)
-b1 <- sort(b1)
-b2 <- sort(b2)
 
 df <- data.frame()
 means_co <- c()
@@ -762,7 +758,6 @@ for (val in xvals){
                                      mean(dat$polori_gmc, na.rm=T),
                                      mean(dat$gini2016s, na.rm=T),
                                      mean(dat$gdp2016s, na.rm=T)))
-    b <- sort(b)
     theta <- a*b
     out_ith <- quantile(theta, probs = c(0.025, 0.05, 0.5, 0.95, 0.975), names=F)
     means_co <- c(means_co, mean(out_ith))
@@ -792,10 +787,6 @@ a <- as.vector(posterior_samples(mxmodel, 'ins_stigma', as.matrix = T))
 i1 <- as.vector(posterior_samples(mxmodel, 'b_Intercept', as.matrix = T))
 b1 <- as.vector(posterior_samples(ymxmodel_wi, 'polyperc_stigma_mc2rawEQFALSE1', as.matrix=T))
 b2 <- as.vector(posterior_samples(ymxmodel_wi, 'polyperc_stigma_mc2rawEQFALSE2', as.matrix=T))
-a <- sort(a)
-i1 <- sort(i1)
-b1 <- sort(b1)
-b2 <- sort(b2)
 
 df <- data.frame()
 means_wi <- c()
@@ -806,7 +797,6 @@ for (val in xvals){
                                      mean(dat$polori_gmc, na.rm=T),
                                      mean(dat$gini2016s, na.rm=T),
                                      mean(dat$gdp2016s, na.rm=T)))
-    b <- sort(b)
     theta <- a*b
     out_ith <- quantile(theta, probs = c(0.025, 0.05, 0.5, 0.95, 0.975), names=F)
     means_wi <- c(means_wi, mean(out_ith))
