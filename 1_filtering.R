@@ -32,6 +32,16 @@ clean_df$gen_min <- gen_min_final
 
 table(clean_df$gen_min)
 
+new_gen <- NA
+new_gen[clean_df$gen_min == 1] <- 3
+new_gen[clean_df$gen == 1] <- 1
+new_gen[clean_df$gen == 2] <- 2
+
+table(clean_df$gen_min, new_gen)
+table(new_gen)
+
+clean_df$new_gen <- new_gen
+
 ## sanity checks
 dim(clean_df)
 table(clean_df$Sample)
