@@ -44,6 +44,16 @@ rawdata$colac <- rowMeans(rawdata[c('colac1',
                                     'colac2',
                                     'colac3')], na.rm = TRUE)
 
+## Adding low cost collective acction for apendix comparison
+
+rawdata$wilac_l <- rowMeans(rawdata[c('wilac4',
+                                      'wilac5',
+                                      'wilac6')], na.rm = TRUE)
+
+rawdata$colac_l <- rowMeans(rawdata[c('colac4',
+                                      'colac5',
+                                      'colac6')], na.rm = TRUE)
+
 ## correlation beetwen measures of intitutional stigma
 
 corr.test(rawdata$gai, rawdata$gbgr)

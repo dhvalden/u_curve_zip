@@ -65,6 +65,7 @@ options(browser="/usr/bin/firefox")
 
 tab_df(aggregate(ID ~ Sample, data = dat, FUN = length))
 prop.table(table(dat$gen_min))*100
+prop.table(table(dat$new_gen))*100
 
 frqdat <- subset(dat, select = -c(ID, Sample, gen_min))
 tab_df(describe(frqdat), digits = 2)
@@ -247,10 +248,10 @@ summary(colac_ins)
 tab_model(wilac_perc, colac_perc, robust = TRUE)
 tab_model(wilac_ins, colac_ins, robust = TRUE)
 
-bayestestR::hdi(wilac_perc, ci = c(.9, .95, .99))
-bayestestR::hdi(colac_perc, ci = c(.9, .95, .99))
-bayestestR::hdi(wilac_ins, ci = c(.9, .95, .99))
-bayestestR::hdi(colac_ins, ci = c(.9, .95, .99))
+bayestestR::hdi(wilac_perc)
+bayestestR::hdi(colac_perc)
+bayestestR::hdi(wilac_ins)
+bayestestR::hdi(colac_ins)
 
 ##Linear model for comparison
 
@@ -518,10 +519,10 @@ summary(colac_perc_country)
 tab_model(wilac_perc_country, colac_perc_country, robust = TRUE)
 tab_model(wilac_ins_country, colac_ins_country, robust = TRUE)
 
-bayestestR::hdi(wilac_perc_country, ci = c(.9, .95, .99))
-bayestestR::hdi(colac_perc_country, ci = c(.9, .95, .99))
-bayestestR::hdi(wilac_ins_country, ci = c(.9, .95, .99))
-bayestestR::hdi(colac_ins_country, ci = c(.9, .95, .99))
+bayestestR::hdi(wilac_perc_country)
+bayestestR::hdi(colac_perc_country)
+bayestestR::hdi(wilac_ins_country)
+bayestestR::hdi(colac_ins_country)
 
 ##Linear models for comparison
 
@@ -789,6 +790,10 @@ summary(ymxmodel_wi)
 
 tab_model(mxmodel, show.se = TRUE)
 tab_model(ymxmodel_wi, ymxmodel_co, show.se = TRUE)
+
+bayestestR::hdi(mxmodel)
+bayestestR::hdi(ymxmodel_wi)
+bayestestR::hdi(ymxmodel_co)
 
 ###############################################
 ## instantaneous indirect effects calculation
