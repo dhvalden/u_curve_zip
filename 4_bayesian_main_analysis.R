@@ -363,7 +363,7 @@ wilac_perc_g <- brm_multiple(wilac ~ poly(perc_stigma_gm, 2, raw=FALSE) +
                              save_pars = save_pars(all = TRUE),
                              file = 'models/wilac_perc_g'
                              )
-summary(wilac_perc_g, prob = .9)
+summary(wilac_perc_g)
 
 colac_perc_g <- brm_multiple(colac ~ poly(perc_stigma_gm, 2, raw=FALSE) +
                                  poly(perc_stigma_gmc, 2, raw=FALSE) +
@@ -388,7 +388,7 @@ colac_perc_g <- brm_multiple(colac ~ poly(perc_stigma_gm, 2, raw=FALSE) +
                              save_pars = save_pars(all = TRUE),
                              file = 'models/colac_perc_g'
                              )
-summary(colac_perc_g, prob = .9)
+summary(colac_perc_g)
 
 wilac_ins_g <- brm_multiple(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
                                  gen_min +
@@ -412,7 +412,7 @@ wilac_ins_g <- brm_multiple(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
                             save_pars = save_pars(all = TRUE),
                             file = 'models/wilac_ins_g'
                             )
-summary(wilac_ins_g, prob = .9)
+summary(wilac_ins_g)
 
 
 colac_ins_g <- brm_multiple(colac ~ poly(ins_stigma, 2, raw=FALSE) +
@@ -437,7 +437,154 @@ colac_ins_g <- brm_multiple(colac ~ poly(ins_stigma, 2, raw=FALSE) +
                             save_pars = save_pars(all = TRUE),
                             file = 'models/colac_ins_g'
                             )
-summary(colac_ins_g, prob = .9)
+summary(colac_ins_g)
+
+bayestestR::hdi(wilac_perc_g)
+bayestestR::hdi(colac_perc_g)
+bayestestR::hdi(wilac_ins_g)
+bayestestR::hdi(colac_ins_g)
+
+
+## Linear models for comparison
+
+mypriors_perc_g_l <- c(prior(normal(0, 10), class = "Intercept"),
+              prior(normal(0, 10), class = "b", coef = "perc_stigma_gm"),
+              prior(normal(0, 10), class = "b", coef = "perc_stigma_gmc"),
+              prior(normal(0, 10), class = "b", coef = "gen_min1"),
+              prior(normal(0, 10), class = "b", coef = "prop_gen_min"),
+              prior(normal(0, 10), class = "b", coef = "new_gen2"),
+              prior(normal(0, 10), class = "b", coef = "new_gen3"),
+              prior(normal(0, 10), class = "b", coef = "prop_female"),
+              prior(normal(0, 10), class = "b", coef = "prop_other"),
+              prior(normal(0, 10), class = "b", coef = "age_gmc"),
+              prior(normal(0, 10), class = "b", coef = "age_gm"),
+              prior(normal(0, 10), class = "b", coef = "grpid_gmc"),
+              prior(normal(0, 10), class = "b", coef = "grpid_gm"),
+              prior(normal(0, 10), class = "b", coef = "gdp2016s"),
+              prior(normal(0, 10), class = "b", coef = "gini2016s")
+              )
+
+mypriors_ins_g_l <- c(prior(normal(0, 10), class = "Intercept"),
+              prior(normal(0, 10), class = "b", coef = "ins_stigma"),
+              prior(normal(0, 10), class = "b", coef = "gen_min1"),
+              prior(normal(0, 10), class = "b", coef = "prop_gen_min"),
+              prior(normal(0, 10), class = "b", coef = "new_gen2"),
+              prior(normal(0, 10), class = "b", coef = "new_gen3"),
+              prior(normal(0, 10), class = "b", coef = "prop_female"),
+              prior(normal(0, 10), class = "b", coef = "prop_other"),
+              prior(normal(0, 10), class = "b", coef = "age_gmc"),
+              prior(normal(0, 10), class = "b", coef = "age_gm"),
+              prior(normal(0, 10), class = "b", coef = "grpid_gmc"),
+              prior(normal(0, 10), class = "b", coef = "grpid_gm"),
+              prior(normal(0, 10), class = "b", coef = "gdp2016s"),
+              prior(normal(0, 10), class = "b", coef = "gini2016s")
+              )
+
+
+wilac_perc_g_l <- brm_multiple(wilac ~ perc_stigma_gm +
+                                 perc_stigma_gmc +
+                                 gen_min +
+                                 prop_gen_min +
+                                 new_gen +
+                                 prop_female +
+                                 prop_other +
+                                 age_gmc +
+                                 age_gm +
+                                 grpid_gmc +
+                                 grpid_gm +
+                                 gini2016s +
+                                 gdp2016s +
+                                 (1 | Sample),
+                             data = a.mids,
+                             prior = mypriors_perc_g_l,
+                             cores = 3,
+                             seed = 123,
+                             refresh = 0,
+                             open_progress = FALSE,
+                             save_pars = save_pars(all = TRUE),
+                             file = 'models/wilac_perc_g_l'
+                             )
+summary(wilac_perc_g_l)
+
+colac_perc_g_l <- brm_multiple(colac ~ perc_stigma_gm +
+                                 perc_stigma_gmc +
+                                 gen_min +
+                                 prop_gen_min +
+                                 new_gen +
+                                 prop_female +
+                                 prop_other +
+                                 age_gmc +
+                                 age_gm +
+                                 grpid_gmc +
+                                 grpid_gm +
+                                 gini2016s +
+                                 gdp2016s +
+                                 (1 | Sample),
+                             data = a.mids,
+                             prior = mypriors_perc_g_l,
+                             cores = 3,
+                             seed = 123,
+                             refresh = 0,
+                             open_progress = FALSE,
+                             save_pars = save_pars(all = TRUE),
+                             file = 'models/colac_perc_g_l'
+                             )
+summary(colac_perc_g_l)
+
+wilac_ins_g_l <- brm_multiple(wilac ~ ins_stigma +
+                                 gen_min +
+                                 prop_gen_min +
+                                 new_gen +
+                                 prop_female +
+                                 prop_other +
+                                 age_gmc +
+                                 age_gm +
+                                 grpid_gmc +
+                                 grpid_gm +
+                                 gini2016s +
+                                 gdp2016s +
+                                 (1 | Sample),
+                            data = a.mids,
+                            prior = mypriors_ins_g_l,
+                            cores = 3,
+                            seed = 123,
+                            refresh = 0,
+                            open_progress = FALSE,
+                            save_pars = save_pars(all = TRUE),
+                            file = 'models/wilac_ins_g_l'
+                            )
+summary(wilac_ins_g_l)
+
+
+colac_ins_g_l <- brm_multiple(colac ~ ins_stigma +
+                                gen_min +
+                                prop_gen_min +
+                                new_gen +
+                                prop_female +
+                                prop_other +
+                                age_gmc +
+                                age_gm +
+                                grpid_gmc +
+                                grpid_gm +
+                                gini2016s +
+                                gdp2016s +
+                                (1 | Sample),
+                            data = a.mids,
+                            prior = mypriors_ins_g_l,
+                            cores = 3,
+                            seed = 123,
+                            refresh = 0,
+                            open_progress = FALSE,
+                            save_pars = save_pars(all = TRUE),
+                            file = 'models/colac_ins_g_l'
+                            )
+summary(colac_ins_g_l)
+
+bayes_factor(wilac_perc_g, wilac_perc_g_l)
+bayes_factor(colac_perc_g, colac_perc_g_l)
+bayes_factor(wilac_ins_g, wilac_ins_g_l)
+bayes_factor(colac_ins_g, colac_ins_g_l)
+
 
 ##########
 ## Plots
@@ -446,29 +593,98 @@ summary(colac_ins_g, prob = .9)
 ## Within Models
 
 g1 <- plot(conditional_effects(wilac_perc, "perc_stigma_gmc"), plot = FALSE)[[1]] +
+        geom_point(
+        aes(x = perc_stigma_gmc, y = wilac), 
+        data = dat,
+        size = 4,
+        alpha = .05,
+        color = "red",
+        stroke = 0,
+        position = position_jitter(w = 0.15, h = 0.15),
+        inherit.aes = FALSE) +
     theme_bw() +
     ylim(1, 7) +
     xlab("Perceived Stigma") +
     ylab("Collective Actions Intentions")
 g2 <- plot(conditional_effects(colac_perc, "perc_stigma_gmc"), plot = FALSE)[[1]] +
+        geom_point(
+        aes(x = perc_stigma_gmc, y = colac), 
+        data = dat,
+        size = 4,
+        alpha = .05,
+        color = "red",
+        stroke = 0,
+        position = position_jitter(w = 0.15, h = 0.15),
+        inherit.aes = FALSE) +
     theme_bw() +
     ylim(1, 7) +
     xlab("Perceived Stigma") +
     ylab("Participation in Collective Actions")
-ggsave("plots/perc_individual.png", arrangeGrob(g1, g2, nrow=1),width = 30, height = 12,
+ggsave("plots/perc_within.png", arrangeGrob(g1, g2, nrow=1),width = 30, height = 12,
        units = "cm", limitsize = FALSE)
 
-g3 <- plot(conditional_effects(wilac_ins, "ins_stigma"), plot = FALSE)[[1]] +
+## Between Plots
+
+g3 <- plot(conditional_effects(wilac_perc_g, "perc_stigma_gm"), plot = FALSE)[[1]] +
+    geom_point(
+        aes(x = perc_stigma_gm, y = wilac), 
+        data = dat,
+        size = 4,
+        alpha = .05,
+        color = "red",
+        stroke = 0,
+        position = position_jitter(w = 0.15, h = 0.15),
+        inherit.aes = FALSE) +
+    theme_bw() +
+    ylim(1, 7) +
+    xlab("Perceived Stigma") +
+    ylab("Collective Actions Intentions")
+g4 <- plot(conditional_effects(colac_perc_g, "perc_stigma_gm"), plot = FALSE)[[1]] +
+        geom_point(
+        aes(x = perc_stigma_gm, y = colac), 
+        data = dat,
+        size = 4,
+        alpha = .05,
+        color = "red",
+        stroke = 0,
+        position = position_jitter(w = 0.15, h = 0.15),
+        inherit.aes = FALSE) +
+    theme_bw() +
+    ylim(1, 7) +
+    xlab("Perceived Stigma") +
+    ylab("Participation in Collective Actions")
+ggsave("plots/perc_between.png", arrangeGrob(g3, g4, nrow=1),width = 30, height = 12,
+       units = "cm", limitsize = FALSE)
+
+g5 <- plot(conditional_effects(wilac_ins_g, "ins_stigma"), plot = FALSE)[[1]] +
+    geom_point(
+        aes(x = ins_stigma, y = wilac), 
+        data = dat,
+        size = 4,
+        alpha = .05,
+        color = "red",
+        stroke = 0,
+        position = position_jitter(w = 0.15, h = 0.15),
+        inherit.aes = FALSE) +
     theme_bw() +
     ylim(1, 7) +
     xlab("Institutional Stigma") +
     ylab("Collective Actions Intentions")
-g4 <- plot(conditional_effects(colac_ins, "ins_stigma"), plot = FALSE)[[1]] +
+g6 <- plot(conditional_effects(colac_ins_g, "ins_stigma"), plot = FALSE)[[1]] +
+    geom_point(
+        aes(x = ins_stigma, y = colac), 
+        data = dat,
+        size = 4,
+        alpha = .05,
+        color = "red",
+        stroke = 0,
+        position = position_jitter(w = 0.15, h = 0.15),
+        inherit.aes = FALSE) +
     theme_bw() +
     ylim(1, 7) +
     xlab("Institutional Stigma") +
     ylab("Participation in Collective Actions")
-ggsave("plots/ins_individual.png", arrangeGrob(g3, g4, nrow=1),width = 30, height = 12,
+ggsave("plots/ins_between.png", arrangeGrob(g5, g6, nrow=1),width = 30, height = 12,
        units = "cm", limitsize = FALSE)
 
 
@@ -476,14 +692,12 @@ ggsave("plots/ins_individual.png", arrangeGrob(g3, g4, nrow=1),width = 30, heigh
 ##Tipping point values
 ######################
 
-get_tipping_point(g3)
-get_tipping_point(g4)
 
 ## Country Level
 
 library(ggrepel)
 
-g5 <- plot(conditional_effects(wilac_perc_country, "MPercStigma"), plot=FALSE)[[1]] +
+g_example <- plot(conditional_effects(wilac_perc_country, "MPercStigma"), plot=FALSE)[[1]] +
     theme_bw() +
     ylim(1, 7) +
     geom_count(aes(x=MPercStigma, y=MWilac),
@@ -494,58 +708,15 @@ g5 <- plot(conditional_effects(wilac_perc_country, "MPercStigma"), plot=FALSE)[[
                     inherit.aes=FALSE) +
     xlab('Perceived Stigma') +
     ylab('Collective Action Intentions')
-
-g6 <- plot(conditional_effects(colac_perc_country, "MPercStigma"), plot=FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    geom_count(aes(x=MPercStigma, y=MColac),
-               data=cntrylvl_dat, col='tomato3', alpha=.7, show.legend=F,
-               inherit.aes=FALSE) +
-    geom_text_repel(aes(x=MPercStigma, y=MColac, label=Sample), max.overlaps=Inf,
-                    data=cntrylvl_dat,
-                    inherit.aes=FALSE) +
-    xlab('Perceived Stigma') +
-    ylab('Participation in Collective Action')
-
-
-g7 <- plot(conditional_effects(wilac_ins_country, "MInsStigma"), plot=FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    geom_count(aes(x=MInsStigma, y=MWilac),
-               data=cntrylvl_dat, col='tomato3', alpha=.7, show.legend=F,
-               inherit.aes=FALSE) +
-    geom_text_repel(aes(x=MInsStigma, y=MWilac, label=Sample), max.overlaps=Inf,
-                    data=cntrylvl_dat,
-                    inherit.aes=FALSE) +
-    xlab('Institutional Stigma') +
-    ylab('Collective Action Intentions')
-
-g8 <- plot(conditional_effects(colac_ins_country, "MInsStigma"), plot=FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    geom_count(aes(x=MInsStigma, y=MColac),
-               data=cntrylvl_dat, col='tomato3', alpha=.7, show.legend=F,
-               inherit.aes=FALSE) +
-    geom_text_repel(aes(x=MInsStigma, y=MColac, label=Sample), max.overlaps=Inf,
-                    data=cntrylvl_dat,
-                    inherit.aes=FALSE) +
-    xlab('Institutional Stigma') +
-    ylab('Participation in Collective Action')
-
-
-ggsave("plots/perc_cntry.png", arrangeGrob(g5, g6, nrow=1), width = 40, height = 20,
-       units = "cm", limitsize = FALSE)
-ggsave("plots/ins_cntry.png", arrangeGrob(g7, g8, nrow=1), width = 40, height = 20,
-       units = "cm", limitsize = FALSE)
+g_example
 
 ######################
 ##Tipping point values
 ######################
-
+get_tipping_point(g3)
+get_tipping_point(g4)
 get_tipping_point(g5)
 get_tipping_point(g6)
-get_tipping_point(g7)
-get_tipping_point(g8)
 
 #######################
 ## Mediation analysis
