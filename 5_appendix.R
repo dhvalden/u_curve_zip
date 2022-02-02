@@ -6,8 +6,9 @@ library(gridExtra)
 library(mice)
 library(miceadds)
 library(brms)
+library(ggrepel)
 
- options(browser="firefox")
+options(browser="firefox")
 
 dat <- read.csv('data/fulldataset.csv', row.names = 1)
 names(dat)
@@ -69,6 +70,54 @@ get_tipping_point <- function(plot_object){
     plot_data = ggplot_build(plot_object)$data[[1]]
     x_max_y_value = plot_data$x[which.max(plot_data$y)]
     return(x_max_y_value)
+}
+
+plot_between <- function(model, x, y, xlab, ylab, data_within, data_between){
+    g <- plot(conditional_effects(model, x), plot = FALSE)[[1]] +
+        geom_point(
+            aes_string(x = x, y = y), 
+            data = data_within,
+            size = 4,
+            alpha = .05,
+            color = dot_colour,
+            stroke = 0,
+            position = position_jitter(w = 0.15, h = 0.15),
+            inherit.aes = FALSE) +
+        geom_point(
+            aes_string(x = x, y = y), 
+            data = data_between,
+            size = 4,
+            color = country_dot_colour,
+            stroke = 0,
+            inherit.aes = FALSE) +
+        geom_text_repel(
+            aes_string(x = x, y = y, label = "Sample"),
+            max.overlaps = Inf,
+            data = data_between,
+            inherit.aes = FALSE) +
+        theme_bw() +
+        ylim(1, 7) +
+        xlab(xlab) +
+        ylab(ylab)
+    return(g)
+}
+
+plot_within <- function(model, x, y, xlab, ylab, data_within){
+    g <- plot(conditional_effects(model, x), plot = FALSE)[[1]] +
+        geom_point(
+            aes_string(x = x, y = y), 
+            data = data_within,
+            size = 4,
+            alpha = .05,
+            color = dot_colour,
+            stroke = 0,
+            position = position_jitter(w = 0.15, h = 0.15),
+            inherit.aes = FALSE) +
+        theme_bw() +
+        ylim(1, 7) +
+        xlab(xlab) +
+        ylab(ylab)
+    return(g)
 }
 
 ## creating centered variables
@@ -372,89 +421,64 @@ bayestestR::hdi(colac_ins_g)
 ## Plots
 ##########
 
-## Individual Levels
+dot_colour <- "black"
+country_dot_colour <- "tomato3"
 
-g1 <- plot(conditional_effects(wilac_perc, "perc_stigma_gmc"), plot = FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    xlab("Perceived Stigma") +
-    ylab("Low Cost Collective Actions Intentions")
-g2 <- plot(conditional_effects(colac_perc, "perc_stigma_gmc"), plot = FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    xlab("Perceived Stigma") +
-    ylab("Participation in Low Cost Collective Actions")
-ggsave("plots/perc_individual_low.png", arrangeGrob(g1, g2, nrow=1),width = 30, height = 12,
+## Within Plots
+
+g1 <- plot_within(model = wilac_perc,
+                  x = "perc_stigma_gmc",
+                  y = "wilac",
+                  xlab = "Perceived Stigma",
+                  ylab = "Collective Actions Intentions",
+                  data_within = dat)
+
+g2 <- plot_within(model = colac_perc,
+                  x = "perc_stigma_gmc",
+                  y = "colac",
+                  xlab = "Perceived Stigma",
+                  ylab = "Participation in Collective Actions",
+                  data_within = dat)
+
+ggsave("plots/perc_within_low.png", arrangeGrob(g1, g2, nrow=1),width = 30, height = 12,
        units = "cm", limitsize = FALSE)
 
-g3 <- plot(conditional_effects(wilac_ins, "ins_stigma"), plot = FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    xlab("Institutional Stigma") +
-    ylab("Low Cost Collective Actions Intentions")
-g4 <- plot(conditional_effects(colac_ins, "ins_stigma"), plot = FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    xlab("Institutional Stigma") +
-    ylab("Participation in Low Cost Collective Actions")
-ggsave("plots/ins_individual_low.png", arrangeGrob(g3, g4, nrow=1),width = 30, height = 12,
+## Between Plots
+
+country_means <- aggregate(cbind(perc_stigma_gm, ins_stigma, wilac, colac) ~ Sample,
+                           data = dat,
+                           FUN = mean)
+
+g3 <- plot_between(model = wilac_perc_g,
+                   x = "perc_stigma_gm",
+                   y = "wilac",
+                   xlab = "Perceived Stigma",
+                   ylab = "Collective Actions Intentions",
+                   data_within = dat,
+                   data_between = country_means)
+g4 <- plot_between(model = colac_perc_g,
+                   x = "perc_stigma_gm",
+                   y = "colac",
+                   xlab = "Perceived Stigma",
+                   ylab = "Participation in Collective Actions",
+                   data_within = dat,
+                   data_between = country_means)
+g5 <- plot_between(model = wilac_ins_g,
+                   x = "ins_stigma",
+                   y = "wilac",
+                   xlab = "Institutional Stigma",
+                   ylab = "Collective Actions Intentions",
+                   data_within = dat,
+                   data_between = country_means)
+g6 <- plot_between(model = colac_ins_g,
+                   x = "ins_stigma",
+                   y = "colac",
+                   xlab = "Institutional Stigma",
+                   ylab = "Participation in Collective Actions",
+                   data_within = dat,
+                   data_between = country_means)
+
+ggsave("plots/perc_between_low.png", arrangeGrob(g3, g4, nrow=1),width = 30, height = 12,
        units = "cm", limitsize = FALSE)
-
-## Country Level
-
-library(ggrepel)
-
-g5 <- plot(conditional_effects(wilac_perc_country, "MPercStigma"), plot=FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    geom_count(aes(x=MPercStigma, y=MWilac),
-               data=cntrylvl_dat, col='tomato3', alpha=.7, show.legend=F,
-               inherit.aes=FALSE) +
-    geom_text_repel(aes(x=MPercStigma, y=MWilac, label=Sample), max.overlaps=Inf,
-                    data=cntrylvl_dat,
-                    inherit.aes=FALSE) +
-    xlab('Perceived Stigma') +
-    ylab('Low Cost Collective Action Intentions')
-
-g6 <- plot(conditional_effects(colac_perc_country, "MPercStigma"), plot=FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    geom_count(aes(x=MPercStigma, y=MColac),
-               data=cntrylvl_dat, col='tomato3', alpha=.7, show.legend=F,
-               inherit.aes=FALSE) +
-    geom_text_repel(aes(x=MPercStigma, y=MColac, label=Sample), max.overlaps=Inf,
-                    data=cntrylvl_dat,
-                    inherit.aes=FALSE) +
-    xlab('Perceived Stigma') +
-    ylab('Participation in Low Cost Collective Action')
-
-
-g7 <- plot(conditional_effects(wilac_ins_country, "MInsStigma"), plot=FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    geom_count(aes(x=MInsStigma, y=MWilac),
-               data=cntrylvl_dat, col='tomato3', alpha=.7, show.legend=F,
-               inherit.aes=FALSE) +
-    geom_text_repel(aes(x=MInsStigma, y=MWilac, label=Sample), max.overlaps=Inf,
-                    data=cntrylvl_dat,
-                    inherit.aes=FALSE) +
-    xlab('Institutional Stigma') +
-    ylab('Low Cost Collective Action Intentions')
-
-g8 <- plot(conditional_effects(colac_ins_country, "MInsStigma"), plot=FALSE)[[1]] +
-    theme_bw() +
-    ylim(1, 7) +
-    geom_count(aes(x=MInsStigma, y=MColac),
-               data=cntrylvl_dat, col='tomato3', alpha=.7, show.legend=F,
-               inherit.aes=FALSE) +
-    geom_text_repel(aes(x=MInsStigma, y=MColac, label=Sample), max.overlaps=Inf,
-                    data=cntrylvl_dat,
-                    inherit.aes=FALSE) +
-    xlab('Institutional Stigma') +
-    ylab('Participation in Low Cost Collective Action')
-
-
-ggsave("plots/perc_cntry_low.png", arrangeGrob(g5, g6, nrow=1), width = 40, height = 20,
-       units = "cm", limitsize = FALSE)
-ggsave("plots/ins_cntry_low.png", arrangeGrob(g7, g8, nrow=1), width = 40, height = 20,
+ggsave("plots/ins_between_low.png", arrangeGrob(g5, g6, nrow=1),width = 30, height = 12,
        units = "cm", limitsize = FALSE)
