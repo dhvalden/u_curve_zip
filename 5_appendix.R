@@ -242,6 +242,8 @@ wilac_perc <- brm_multiple(wilac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                            file = 'models/wilac_perc_low'
                            )
 summary(wilac_perc)
+bayestestR::hdi(wilac_perc, ci=c(.9, .95))
+bayes_R2(wilac_perc)
 
 ##Participation by perceive stigma model
 colac_perc <- brm_multiple(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
@@ -264,12 +266,8 @@ colac_perc <- brm_multiple(colac ~ poly(perc_stigma_gmc, 2, raw=FALSE) +
                           file = 'models/colac_perc_low'
                           )
 summary(colac_perc)
-
-
-tab_model(wilac_perc, colac_perc, robust = TRUE)
-
-bayestestR::hdi(wilac_perc)
-bayestestR::hdi(colac_perc)
+bayestestR::hdi(colac_perc, ci=c(.9, .95))
+bayes_R2(colac_perc)
 
 ##############################################
 ## Between Models low cost collective actions
@@ -336,6 +334,8 @@ wilac_perc_g <- brm_multiple(wilac ~ poly(perc_stigma_gm, 2, raw=FALSE) +
                              file = 'models/wilac_perc_g_low'
                              )
 summary(wilac_perc_g)
+bayestestR::hdi(wilac_perc_g, ci=c(.9, .95))
+bayes_R2(wilac_perc_g)
 
 colac_perc_g <- brm_multiple(colac ~ poly(perc_stigma_gm, 2, raw=FALSE) +
                                  poly(perc_stigma_gmc, 2, raw=FALSE) +
@@ -361,6 +361,8 @@ colac_perc_g <- brm_multiple(colac ~ poly(perc_stigma_gm, 2, raw=FALSE) +
                              file = 'models/colac_perc_g_low'
                              )
 summary(colac_perc_g)
+bayestestR::hdi(colac_perc_g, ci=c(.9, .95))
+bayes_R2(colac_perc_g)
 
 wilac_ins_g <- brm_multiple(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
                                  gen_min +
@@ -385,7 +387,8 @@ wilac_ins_g <- brm_multiple(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
                             file = 'models/wilac_ins_g_low'
                             )
 summary(wilac_ins_g)
-
+bayestestR::hdi(wilac_ins_g, ci=c(.9, .95))
+bayes_R2(wilac_ins_g)
 
 colac_ins_g <- brm_multiple(colac ~ poly(ins_stigma, 2, raw=FALSE) +
                                 gen_min +
@@ -410,11 +413,8 @@ colac_ins_g <- brm_multiple(colac ~ poly(ins_stigma, 2, raw=FALSE) +
                             file = 'models/colac_ins_g_low'
                             )
 summary(colac_ins_g)
-
-bayestestR::hdi(wilac_perc_g)
-bayestestR::hdi(colac_perc_g)
-bayestestR::hdi(wilac_ins_g)
-bayestestR::hdi(colac_ins_g)
+bayestestR::hdi(colac_ins_g, ci=c(.9, .95))
+bayes_R2(colac_ins_g)
 
 
 ##########
@@ -430,14 +430,14 @@ g1 <- plot_within(model = wilac_perc,
                   x = "perc_stigma_gmc",
                   y = "wilac",
                   xlab = "Perceived Stigma",
-                  ylab = "Collective Actions Intentions",
+                  ylab = "Collective Action Intentions",
                   data_within = dat)
 
 g2 <- plot_within(model = colac_perc,
                   x = "perc_stigma_gmc",
                   y = "colac",
                   xlab = "Perceived Stigma",
-                  ylab = "Participation in Collective Actions",
+                  ylab = "Participation in Collective Action",
                   data_within = dat)
 
 ggsave("plots/perc_within_low.png", arrangeGrob(g1, g2, nrow=1),width = 30, height = 12,
@@ -453,28 +453,28 @@ g3 <- plot_between(model = wilac_perc_g,
                    x = "perc_stigma_gm",
                    y = "wilac",
                    xlab = "Perceived Stigma",
-                   ylab = "Collective Actions Intentions",
+                   ylab = "Collective Action Intentions",
                    data_within = dat,
                    data_between = country_means)
 g4 <- plot_between(model = colac_perc_g,
                    x = "perc_stigma_gm",
                    y = "colac",
                    xlab = "Perceived Stigma",
-                   ylab = "Participation in Collective Actions",
+                   ylab = "Participation in Collective Action",
                    data_within = dat,
                    data_between = country_means)
 g5 <- plot_between(model = wilac_ins_g,
                    x = "ins_stigma",
                    y = "wilac",
                    xlab = "Institutional Stigma",
-                   ylab = "Collective Actions Intentions",
+                   ylab = "Collective Action Intentions",
                    data_within = dat,
                    data_between = country_means)
 g6 <- plot_between(model = colac_ins_g,
                    x = "ins_stigma",
                    y = "colac",
                    xlab = "Institutional Stigma",
-                   ylab = "Participation in Collective Actions",
+                   ylab = "Participation in Collective Action",
                    data_within = dat,
                    data_between = country_means)
 
