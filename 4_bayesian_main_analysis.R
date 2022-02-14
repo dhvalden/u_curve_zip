@@ -18,6 +18,8 @@ dat$polori[dat$polori == 8] <- NA
 
 table(dat$polori)
 
+prop.table(table(dat$sexo))
+
 ## trimming down the dataset
 
 dat <- dat[c('ID',
@@ -465,7 +467,7 @@ wilac_ins_g <- brm_multiple(wilac ~ poly(ins_stigma, 2, raw=FALSE) +
                             file = 'models/wilac_ins_g'
                             )
 summary(wilac_ins_g)
-bayestestR::hdi(wilac_ins_g, ci = c(.90, .95))
+bayestestR::hdi(wilac_ins_g, ci = c(.89, .90, .95))
 bayes_R2(wilac_ins_g)
 
 colac_ins_g <- brm_multiple(colac ~ poly(ins_stigma, 2, raw=FALSE) +
@@ -921,13 +923,14 @@ medplot_co <- ggplot(data = df) +
     geom_line(aes(x=xvals, y=means_co)) +
     geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
     geom_ribbon(aes(x=xvals, ymin=CIl, ymax=CIu),
-                alpha=0.1,
+                alpha=0.3,
                 fill='blue') +
     geom_ribbon(aes(x=xvals, ymin=CIll, ymax=CIuu),
-                alpha=0.1,
+                alpha=0.3,
                 fill='red') +
     xlab('Institutional Stigma') +
-    ylab('Instantaneous Indirect Effect on Participation in collective action') +
+    ylab('Instantaneous Indirect Effect on Participation in Collective Action') +
+    theme_bw() +
     ylim(-20, 20)
 
 ####
@@ -960,13 +963,14 @@ medplot_wi <- ggplot(data = df) +
     geom_line(aes(x=xvals, y=means_wi)) +
     geom_abline(slope = 0, intercept = 0, linetype = "dashed") +
     geom_ribbon(aes(x=xvals, ymin=CIl, ymax=CIu),
-                alpha=0.1,
+                alpha=0.3,
                 fill='blue') +
     geom_ribbon(aes(x=xvals, ymin=CIll, ymax=CIuu),
-                alpha=0.1,
+                alpha=0.3,
                 fill='red') +
     xlab('Institutional Stigma') +
-    ylab('Instantaneous Indirect Effect on Collective actions intention') +
+    ylab('Instantaneous Indirect Effect on Collective Action Intentions') +
+    theme_bw() +
     ylim(-20, 20)
 
 ######################
